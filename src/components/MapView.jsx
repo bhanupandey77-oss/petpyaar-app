@@ -22,8 +22,8 @@ export default function MapView({ points = [], height = 220, draggable, onDrag, 
 
   useEffect(() => {
     map.current = L.map(el.current, { zoomControl: false, attributionControl: true }).setView([26.6178, 81.3657], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO',
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap contributors',
     }).addTo(map.current);
     L.control.zoom({ position: 'bottomright' }).addTo(map.current);
     setTimeout(() => map.current?.invalidateSize(), 250);

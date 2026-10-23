@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { LANGS, getLang, setLang } from './i18n/index.js';
 
 const P = {
@@ -91,7 +92,7 @@ export function Sheet({ open, onClose, title, children, wide, full }) {
     return () => { window.removeEventListener('keydown', k); document.body.classList.remove('noscroll'); };
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="sheet-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className={'sheet' + (wide ? ' sheet-wide' : '') + (full ? ' sheet-full' : '')} role="dialog" aria-modal="true" aria-label={title}>
         <div className="sheet-grab" />
@@ -101,7 +102,8 @@ export function Sheet({ open, onClose, title, children, wide, full }) {
         </div>
         <div className="sheet-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
