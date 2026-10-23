@@ -606,6 +606,7 @@ export const DICT = [
   ['2 tikki', '2 टिक्की', '2 टिक्की'],
 ];
 DICT.push(
+  ['New dishes, photos & offers added', 'नई डिश, फ़ोटो और ऑफ़र जुड़ गए', 'नई डिस, फोटो अउर ऑफर जुड़ि गए'],
   // offers – customer
   ['Offers for you', 'आपके लिए ऑफ़र', 'आपके लिए ऑफर'],
   ['Code {} copied — apply it in the cart', 'कोड {} कॉपी हो गया — कार्ट में लगाएँ', 'कोड {} कॉपी होइ गवा — झोरा मा लगावौ'],

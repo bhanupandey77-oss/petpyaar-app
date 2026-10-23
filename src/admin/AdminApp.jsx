@@ -18,6 +18,7 @@ export default function AdminApp() {
   const orders = useList('orders', [['day', 'in', days]], [days.join()]);
   const newCount = useNewOrderAlert(orders, 'New order on PetPyaar!');
   useEffect(() => { askNotifyPermission(); window.addEventListener('pointerdown', unlockAudio, { once: true }); }, []);
+  useAutoSeed();
   useEffect(() => { window.__ppBack = () => { if (tab !== 'dash') { setTab('dash'); return true; } return false; }; return () => { window.__ppBack = null; }; });
   return (
     <div className="panel">
@@ -47,6 +48,26 @@ export default function AdminApp() {
       ]} />
     </div>
   );
+}
+
+/* when the app ships new starter dishes/offers, add the missing ones automatically (never overwrites edits) */
+const SEED_V = 'v2';
+function useAutoSeed() {
+  const items = useItems();
+  const rests = useRestaurants();
+  const toast = useToast();
+  useEffect(() => {
+    if (!items || !rests || localStorage.getItem('pp_seed') === SEED_V) return;
+    const haveI = new Set(items.map((i) => i.id)); const haveR = new Set(rests.map((r) => r.id));
+    const ops = [
+      ...RESTAURANTS.filter((r) => !haveR.has(r.id)).map((r) => ['set', 'restaurants', r.id, r]),
+      ...ITEMS.filter((i) => !haveI.has(i.id)).map((i) => ['set', 'items', i.id, i]),
+      ...ITEMS.filter((i) => haveI.has(i.id) && !items.find((x) => x.id === i.id).gallery).map((i) => ['set', 'items', i.id, { gallery: i.gallery }]),
+      ...OFFERS.map((o) => ['set', 'offers', o.id, o]),
+    ];
+    if (!ops.length) { localStorage.setItem('pp_seed', SEED_V); return; }
+    bulk(ops).then(() => { localStorage.setItem('pp_seed', SEED_V); toast(t('New dishes, photos & offers added')); }).catch((e) => console.warn('autoseed', e));
+  }, [items, rests]); // eslint-disable-line
 }
 
 function Dashboard({ orders, go }) {
