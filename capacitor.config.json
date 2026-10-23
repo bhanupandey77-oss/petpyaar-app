@@ -1,0 +1,9 @@
+{
+  "appId": "in.pandeytechno.petpyaar",
+  "appName": "पेटPyaar",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#fff7ef" },
+  "plugins": {
+    "LocalNotifications": { "smallIcon": "ic_stat_notify", "iconColor": "#f2541b" }
+  }
+}

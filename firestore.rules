@@ -1,0 +1,13 @@
+rules_version = '2';
+// ज्ञानगाँव लाइब्रेरी — Firestore नियम
+// ऐप में मॉक OTP है, इसलिए हर फ़ोन अनाम (anonymous) लॉगिन से जुड़ता है।
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    match /settings/{id}  { allow read, write: if signedIn(); }
+    match /students/{id}  { allow read, write: if signedIn(); }
+    match /payments/{id}  { allow read, create, update: if signedIn(); allow delete: if false; }
+    match /receipts/{id}  { allow read: if signedIn(); allow create, update: if signedIn() && request.resource.data.image.size() < 900000; allow delete: if false; }
+    match /messages/{id}  { allow read, write: if signedIn(); }
+  }
+}
