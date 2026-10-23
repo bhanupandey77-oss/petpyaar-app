@@ -54,10 +54,16 @@ service cloud.firestore {
                     || (isRider() && (resource.data.riderPhone == ph()
                          || (resource.data.riderPhone == '' && request.resource.data.riderPhone == ph())))
                     || (signedIn() && resource.data.customerUid == request.auth.uid
-                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason'])
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs'])
                          && (request.resource.data.status == resource.data.status
                              || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')));
       allow delete: if isAdmin();
+    }
+    match /settlements/{id} {
+      allow create: if ownsRest(request.resource.data.restaurantId) && request.resource.data.status == 'claimed'
+                    && request.resource.data.amount is number && request.resource.data.amount > 0;
+      allow read: if isAdmin() || ownsRest(resource.data.restaurantId);
+      allow update, delete: if isAdmin();
     }
     match /riderLoc/{phone} {
       allow read: if signedIn();

@@ -19,7 +19,7 @@ const HG = { lat: 26.6178, lng: 81.3657 };
 
 export const RESTAURANTS = [
   {
-    id: 'raju-lassi', name: 'Raju Lassi', ownerPhone: '9415213754', ownerName: 'Raju',
+    id: 'raju-lassi', name: 'Raju Lassi', ownerPhone: '9120799904', ownerName: 'Raju',
     tagline: 'Thick lassi, shakes & fresh sweets', cuisines: ['lassi', 'sweets'],
     cover: photo('lassi'), rating: 4.6, prepMins: 10, open: true, demo: false,
     address: 'Main Market, Haidergarh, Barabanki', lat: HG.lat, lng: HG.lng, sort: 1,
@@ -203,6 +203,7 @@ export const DEFAULT_CONFIG = {
 };
 
 export const STAFF = [
-  { phone: '+919415213754', name: 'Admin', admin: true, restaurant: 'raju-lassi' },
-  { phone: '+919198427160', name: 'Rohit', rider: true },
+  { phone: '+919415213754', name: 'Admin', admin: true, restaurant: '', rider: false },
+  { phone: '+919120799904', name: 'Raju', admin: false, restaurant: 'raju-lassi', rider: false },
+  { phone: '+919198427160', name: 'Rohit', admin: false, restaurant: '', rider: true },
 ];

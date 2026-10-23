@@ -44,6 +44,8 @@ const P = {
   swap: 'M4 7h13l-3-3M20 17H7l3 3',
   help: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17v.01',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  shield: 'M12 3l8 3v6c0 5-3.5 8.5-8 9.5C7.5 20.5 4 17 4 12V6zM8.5 12l2.5 2.5 4.5-5',
+  wallet: 'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M17 13.5h.01',
 };
 
 export function Icon({ name, size = 22, stroke = 2, className = '', style, fill = 'none' }) {

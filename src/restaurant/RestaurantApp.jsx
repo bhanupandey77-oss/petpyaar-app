@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useList, setStatus, ACTIVE } from '../lib/data.js';
-import { patch } from '../lib/fb.js';
+import { patch, add } from '../lib/fb.js';
+import { UpiEditor, UpiQr, UpiButton } from '../components/Pay.jsx';
 import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotify, askNotifyPermission, compressImage, todayKey, dayKey, mapsPin } from '../lib/utils.js';
 import { getPosition } from '../lib/native.js';
 import MenuManager from './MenuManager.jsx';
@@ -62,7 +63,7 @@ export default function RestaurantApp() {
       <div className="page-anim" key={tab}>
         {tab === 'orders' && <RestOrders orders={orders} />}
         {tab === 'menu' && <MenuManager restId={rest.id} />}
-        {tab === 'money' && <Earnings orders={orders} />}
+        {tab === 'money' && <><Dues orders={orders} rest={rest} /><Earnings orders={orders} /></>}
         {tab === 'shop' && <ShopSettings rest={rest} />}
       </div>
       <BottomNav value={tab} onChange={setTab} tabs={[
@@ -126,8 +127,15 @@ export function OrderCard({ o, riders, showRest, admin }) {
       {o.discount > 0 && <div className="tiny t-green">{`Coupon ${o.offerCode}: − ${rupee(o.discount)}`}{o.discountBy === 'restaurant' ? '' : ` (${t('paid by PetPyaar')})`}</div>}
       <div className="row between small">
         <span>{o.customerName} · <a href={tel(o.customerPhone)}>{plain(o.customerPhone)}</a></span>
-        <b>{rupee(o.total)} <small className="muted">{o.payment === 'cod' ? 'Cash' : 'UPI'}</small></b>
+        <b>{rupee(o.total)} <small className="muted">{o.payment === 'cod' ? 'Cash' : o.payment === 'upi_now' ? 'UPI (pay now)' : 'UPI on delivery'}</small></b>
       </div>
+      {o.payment !== 'cod' && !['rejected', 'cancelled'].includes(o.status) && (
+        o.paid ? <div className="pay-line ok"><Icon name="check" size={14} /> Payment received</div>
+          : <div className={'pay-line' + (o.paymentClaim ? ' claim' : '')}>
+            <Icon name="upi" size={14} /> <span className="grow">{o.paymentClaim ? t('Customer says UPI paid — check your bank/UPI app') : t('UPI payment not confirmed yet')}</span>
+            <button className="btn small green" disabled={busy} onClick={() => run(() => patch('orders', o.id, { paid: true, paidMs: Date.now() }))}>Received</button>
+          </div>
+      )}
       {admin && <div className="tiny muted" data-notr="">{o.address?.line}</div>}
 
       {o.status === 'placed' && (
@@ -155,7 +163,7 @@ export function OrderCard({ o, riders, showRest, admin }) {
       {admin && ACTIVE.includes(o.status) && o.status !== 'placed' && (
         <div className="row gap wrap">
           {o.status === 'ready' && <button className="btn small ghost grow" onClick={() => run(() => setStatus(o, 'picked'))}>Mark picked</button>}
-          {o.status === 'picked' && <button className="btn small green grow" onClick={() => run(() => setStatus(o, 'delivered', { paid: true }))}>Mark delivered</button>}
+          {o.status === 'picked' && <button className="btn small green grow" onClick={() => run(() => setStatus(o, 'delivered', o.payment === 'cod' ? { paid: true } : {}))}>Mark delivered</button>}
           <button className="btn small ghost danger-text" onClick={() => run(() => setStatus(o, 'cancelled', { cancelReason: 'Cancelled by admin' }))}>Cancel</button>
         </div>
       )}
@@ -165,6 +173,68 @@ export function OrderCard({ o, riders, showRest, admin }) {
           {['Item not available', 'Too busy right now', 'Closing soon', 'Address too far'].map((r) => <button key={r} className={'fchip' + (reason === r ? ' on' : '')} onClick={() => setReason(r)}>{r}</button>)}
         </div>
         <button className="btn danger block" disabled={!reason || busy} onClick={() => { setReject(false); run(() => setStatus(o, 'rejected', { cancelReason: reason })); }}>Reject order</button>
+      </Sheet>
+    </div>
+  );
+}
+
+/* what the restaurant owes PetPyaar (commission + delivery − PetPyaar-funded coupons), paid by UPI */
+export const dueOf = (o) => Math.max(0, Math.round((Number(o.total || 0) - Number(o.payable || 0)) * 100) / 100);
+function Dues({ orders, rest }) {
+  const { config } = useApp();
+  const toast = useToast();
+  const setts = useList('settlements', [['restaurantId', '==', rest.id]], [rest.id]);
+  const [open, setOpen] = useState(false);
+  const [utr, setUtr] = useState('');
+  const [amt, setAmt] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (!orders || !setts) return null;
+  const del = orders.filter((o) => o.status === 'delivered');
+  const commission = del.reduce((a, o) => a + Number(o.commission || 0), 0);
+  const delivery = del.reduce((a, o) => a + Number(o.restDelivery || 0), 0);
+  const ppCoupons = del.filter((o) => o.discountBy === 'admin').reduce((a, o) => a + Number(o.discount || 0), 0);
+  const total = del.reduce((a, o) => a + dueOf(o), 0);
+  const sent = setts.filter((x) => x.status !== 'rejected').reduce((a, x) => a + Number(x.amount || 0), 0);
+  const due = Math.max(0, Math.round((total - sent) * 100) / 100);
+  const pay = Number(amt) > 0 ? Number(amt) : due;
+  const record = async () => {
+    if (!(pay > 0)) return;
+    setBusy(true);
+    try {
+      await add('settlements', { restaurantId: rest.id, restaurantName: rest.name, amount: pay, utr: utr.trim(), status: 'claimed', createdMs: Date.now() });
+      toast(t('Payment recorded. PetPyaar will confirm it.')); setOpen(false); setUtr(''); setAmt('');
+    } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
+    setBusy(false);
+  };
+  const ref = `PP${rest.id.replace(/[^a-z0-9]/gi, '').slice(0, 10)}${Date.now().toString(36)}`;
+  return (
+    <div className="pad-x">
+      <div className="card dues-card">
+        <div className="row between"><h4><Icon name="wallet" size={18} /> PetPyaar dues</h4>{due > 0 ? <b className="t-red">{rupee(due)}</b> : <b className="t-green">{t('All clear')} ✓</b>}</div>
+        <div className="bill small"><span>{`Commission (${del.length} orders)`}</span><span>{rupee(commission)}</span></div>
+        <div className="bill small"><span>Delivery charges</span><span>{rupee(delivery)}</span></div>
+        {ppCoupons > 0 && <div className="bill small t-green"><span>Coupons paid by PetPyaar</span><span>− {rupee(ppCoupons)}</span></div>}
+        <div className="bill small"><span>Already sent</span><span>− {rupee(sent)}</span></div>
+        <div className="bill total"><span>To send now</span><span>{rupee(due)}</span></div>
+        {due > 0 && <button className="btn primary block" onClick={() => setOpen(true)}><Icon name="upi" size={18} /> Pay PetPyaar by UPI</button>}
+        {setts.length > 0 && (
+          <details className="setts"><summary className="small">{`Payment history (${setts.length})`}</summary>
+            {[...setts].sort((a, b) => b.createdMs - a.createdMs).map((x) => (
+              <div key={x.id} className="bill small"><span>{fmtDateTime(x.createdMs)}{x.utr ? ` · ${x.utr}` : ''}</span><span>{rupee(x.amount)} <em className={'st-mini ' + x.status}>{x.status === 'confirmed' ? t('Confirmed') : x.status === 'rejected' ? t('Rejected') : t('Pending')}</em></span></div>
+            ))}
+          </details>
+        )}
+      </div>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Pay PetPyaar">
+        {!config.upiId && !config.upiQr ? <p className="muted">PetPyaar has not added its UPI yet. Please call the admin.</p> : (
+          <>
+            <Field label="Amount ₹"><input className="input" inputMode="decimal" value={amt} placeholder={String(due)} onChange={(e) => setAmt(e.target.value.replace(/[^\d.]/g, ''))} /></Field>
+            <UpiButton upiId={config.upiId} upiName={config.upiName || 'PetPyaar'} amount={pay} note={`PetPyaar dues ${rest.name}`} refId={ref} label="Open UPI app" />
+            <UpiQr upiId={config.upiId} upiName={config.upiName || 'PetPyaar'} upiQr={config.upiQr} amount={pay} note={`PetPyaar dues ${rest.name}`} refId={ref} size={200} />
+            <Field label="UPI reference / UTR no. (optional)"><input className="input" value={utr} onChange={(e) => setUtr(e.target.value.replace(/[^\w]/g, '').slice(0, 24))} data-notr="" /></Field>
+            <button className="btn green block lg" disabled={busy || !(pay > 0)} onClick={record}><Icon name="check" size={18} /> {`I have paid ${rupee(pay)}`}</button>
+          </>
+        )}
       </Sheet>
     </div>
   );
@@ -222,6 +292,8 @@ function ShopSettings({ rest }) {
         </div>
         <button className="btn primary block" disabled={busy} onClick={() => save()}>Save</button>
       </div>
+      <UpiEditor value={rest} title="Your UPI — customers pay you directly" hint="Customers' money comes straight into this account. PetPyaar does not hold your money."
+        onSave={(v) => patch('restaurants', rest.id, v)} />
       <div className="card">
         <h4><Icon name="pin" size={18} /> Shop location on map</h4>
         <p className="small muted">{rest.lat ? <>Saved · <a href={mapsPin(rest)} target="_blank" rel="noreferrer">see on map</a></> : 'Not set'}</p>

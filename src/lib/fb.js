@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, signOut, updateProfile,
+  PhoneAuthProvider, GoogleAuthProvider, signInWithCredential, signInWithPopup,
   indexedDBLocalPersistence, browserLocalPersistence, initializeAuth, browserPopupRedirectResolver,
 } from 'firebase/auth';
 import {
@@ -19,9 +20,32 @@ export const db = initializeFirestore(app, { localCache: persistentLocalCache({ 
 
 export { onAuthStateChanged, signOut, updateProfile, serverTimestamp, increment };
 
-/* ---------- phone OTP ---------- */
+/* ---------- phone OTP ----------
+   Android app: native Firebase (Play Integrity / SMS auto-read) — no reCAPTCHA inside the WebView.
+   Web: reCAPTCHA (invisible). Both return { confirm(code) } like the web SDK. */
+import { Capacitor } from '@capacitor/core';
+const NATIVE = Capacitor.isNativePlatform();
 let verifier = null;
+let FA = null;
+const fa = async () => (FA = FA || (await import('@capacitor-firebase/authentication')).FirebaseAuthentication);
+
 export async function sendOtp(phone10, containerId) {
+  const phone = '+91' + phone10;
+  if (NATIVE) {
+    const F = await fa();
+    await F.removeAllListeners();
+    return new Promise((resolve, reject) => {
+      let vid = null;
+      const done = { confirm: (code) => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code)) };
+      F.addListener('phoneCodeSent', (e) => { vid = e.verificationId; resolve(done); });
+      F.addListener('phoneVerificationFailed', (e) => reject(Object.assign(new Error(e.message || 'failed'), { code: e.code || 'auth/native-failed' })));
+      F.addListener('phoneVerificationCompleted', async (e) => {
+        // SMS read automatically on this phone — finish login without typing
+        if (vid && e.verificationCode) { try { await done.confirm(e.verificationCode); } catch { /* user can still type */ } }
+      });
+      F.signInWithPhoneNumber({ phoneNumber: phone }).catch((e) => reject(e));
+    });
+  }
   if (!verifier) {
     // fresh element every time — reCAPTCHA cannot render twice into the same node
     const host = document.getElementById(containerId);
@@ -30,12 +54,29 @@ export async function sendOtp(phone10, containerId) {
     verifier = new RecaptchaVerifier(auth, el, { size: 'invisible' });
   }
   try {
-    return await signInWithPhoneNumber(auth, '+91' + phone10, verifier);
+    return await signInWithPhoneNumber(auth, phone, verifier);
   } catch (e) {
     try { verifier.clear(); } catch { /* ignore */ }
     verifier = null;
     throw e;
   }
+}
+
+/* ---------- Google ---------- */
+export async function googleSignIn() {
+  if (NATIVE) {
+    const F = await fa();
+    const r = await F.signInWithGoogle();
+    const idToken = r?.credential?.idToken;
+    if (!idToken) throw Object.assign(new Error('Google sign-in cancelled'), { code: 'auth/cancelled' });
+    return signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+  }
+  const p = new GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
+  return signInWithPopup(auth, p);
+}
+export async function fullSignOut() {
+  if (NATIVE) { try { (await fa()).signOut(); } catch { /* ignore */ } }
+  return signOut(auth);
 }
 
 /* ---------- tiny data helpers ---------- */

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { sendOtp, updateProfile, auth, put, serverTimestamp } from './lib/fb.js';
+import { sendOtp, googleSignIn, updateProfile, auth, put, serverTimestamp } from './lib/fb.js';
 import { Logo, Wordmark, Icon, useToast } from './ui.jsx';
 import { t } from './i18n/index.js';
 import { FoodOrbit, FloatingVeggies } from './components/Motion.jsx';
@@ -15,12 +15,15 @@ const errText = (e) => {
   if (c.includes('operation-not-allowed')) return 'SMS login is not enabled yet. Please try again later.';
   if (c.includes('invalid-phone')) return 'Enter a valid 10-digit mobile number';
   if (c.includes('network')) return 'Network problem. Please try again.';
+  if (c.includes('popup-closed') || c.includes('cancel')) return 'Sign-in was cancelled';
+  if (c.includes('captcha') || c.includes('app-credential') || c.includes('app-not-authorized')) return 'Phone verification failed on this device. Please update Google Play services and try again.';
   return 'Could not send OTP. Please try again.';
 };
 
-export default function Login({ onClose }) {
+export default function Login({ onClose, startStep = 'phone', startMode = 'login' }) {
   const toast = useToast();
-  const [step, setStep] = useState('phone');
+  const [step, setStep] = useState(startStep);
+  const [mode, setMode] = useState(startMode);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -40,7 +43,18 @@ export default function Login({ onClose }) {
       conf.current = await sendOtp(phone, 'recaptcha-box');
       setStep('otp'); setLeft(30);
       toast(t('OTP sent to +91 {}').replace('{}', phone));
-    } catch (er) { console.warn(er); toast(t(errText(er)), 'err'); }
+    } catch (er) { console.warn(er); toast(`${t(errText(er))} (${er?.code || er?.message || ''})`, 'err'); }
+    setBusy(false);
+  };
+  const google = async () => {
+    setBusy(true);
+    try {
+      const r = await googleSignIn();
+      const u = r.user;
+      await put('customers', u.uid, { name: u.displayName || '', email: u.email || '', provider: 'google', createdAt: serverTimestamp() });
+      if (!u.displayName) { setStep('name'); setBusy(false); return; }
+      onClose?.(); location.reload();
+    } catch (er) { console.warn(er); toast(`${t(errText(er))} (${er?.code || er?.message || ''})`, 'err'); }
     setBusy(false);
   };
   const verify = async (e) => {
@@ -50,7 +64,7 @@ export default function Login({ onClose }) {
     try {
       const r = await conf.current.confirm(otp);
       if (!r.user.displayName) { setStep('name'); setBusy(false); return; }
-      onClose?.();
+      onClose?.(); location.reload();
     } catch (er) { toast(t(errText(er)), 'err'); setBusy(false); }
   };
   const saveName = async (e) => {
@@ -65,12 +79,13 @@ export default function Login({ onClose }) {
     onClose?.();
     location.reload();
   };
+  const isSignup = mode === 'signup';
 
   return (
     <div className="login-wrap">
       <div className="login-card">
         <FloatingVeggies count={8} seed={7} className="login-veg" />
-        {onClose && step !== 'name' && <button className="icon-btn login-x" onClick={onClose} aria-label="Close"><Icon name="x" /></button>}
+        {onClose && step === 'phone' && <button className="icon-btn login-x" onClick={onClose} aria-label="Close"><Icon name="x" /></button>}
         <div className="login-brand">
           <FoodOrbit photos={ORBIT} size={210}><Logo size={70} animate /></FoodOrbit>
           <Wordmark size={34} />
@@ -79,13 +94,23 @@ export default function Login({ onClose }) {
 
         {step === 'phone' && (
           <form onSubmit={send} className="login-form">
-            <h3>Log in or sign up</h3>
+            <div className="seg auth-seg">
+              <button type="button" className={!isSignup ? 'on' : ''} onClick={() => setMode('login')}>Log in</button>
+              <button type="button" className={isSignup ? 'on' : ''} onClick={() => setMode('signup')}>Sign up</button>
+            </div>
+            <h3>{isSignup ? 'Create your account' : 'Welcome back!'}</h3>
+            <p className="small muted" style={{ marginTop: -4 }}>{isSignup ? 'Mobile number → OTP → your name. That\'s it!' : 'Log in with your mobile number'}</p>
             <div className="phone-input">
               <span>+91</span>
               <input inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10-digit mobile number" value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} autoFocus />
             </div>
-            <button className="btn primary block lg" disabled={busy || phone.length !== 10}>{busy ? 'Sending…' : 'Continue'}</button>
+            <button className="btn primary block lg" disabled={busy || phone.length !== 10}>{busy ? 'Sending…' : 'Get OTP'}</button>
+            <div className="or-line"><span>or</span></div>
+            <button type="button" className="btn google block lg" disabled={busy} onClick={google}>
+              <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" /><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" /><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" /><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" /></svg>
+              {isSignup ? 'Sign up with Google' : 'Continue with Google'}
+            </button>
             <p className="tiny muted center">By continuing you agree to our Terms & Privacy Policy</p>
           </form>
         )}
@@ -106,6 +131,7 @@ export default function Login({ onClose }) {
         {step === 'name' && (
           <form onSubmit={saveName} className="login-form">
             <h3>What should we call you?</h3>
+            <p className="small muted" style={{ marginTop: -4 }}>Last step — your account is almost ready</p>
             <input className="input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={40} />
             <button className="btn primary block lg" disabled={busy}>Let's eat!</button>
           </form>

@@ -2,8 +2,20 @@
   "appId": "in.pandeytechno.petpyaar",
   "appName": "पेटPyaar",
   "webDir": "dist",
-  "android": { "backgroundColor": "#fff7ef" },
+  "android": {
+    "backgroundColor": "#fff7ef"
+  },
   "plugins": {
-    "LocalNotifications": { "smallIcon": "ic_stat_notify", "iconColor": "#f2541b" }
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#f2541b"
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": [
+        "phone",
+        "google.com"
+      ]
+    }
   }
 }

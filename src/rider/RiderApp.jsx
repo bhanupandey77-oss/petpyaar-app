@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Toggle, Empty, useToast, StatusChip, Logo, BottomNav, Confirm } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
-import { useList, setStatus } from '../lib/data.js';
+import { useList, setStatus, useRestaurants } from '../lib/data.js';
+import { UpiQr } from '../components/Pay.jsx';
 import { put, patch } from '../lib/fb.js';
 import { watchPosition } from '../lib/native.js';
 import { rupee, fmtTime, tel, plain, mapsDir, km, todayKey, ding, unlockAudio, systemNotify, askNotifyPermission, LS } from '../lib/utils.js';
@@ -97,6 +98,9 @@ function DeliveryCard({ o, me, available, phone, name }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [qr, setQr] = useState(false);
+  const shop = (useRestaurants() || []).find((r) => r.id === o.restaurantId) || {};
+  const upiId = shop.upiId || o.restUpiId;
   const rest = o.restLat ? { lat: o.restLat, lng: o.restLng } : null;
   const home = o.address?.lat ? { lat: o.address.lat, lng: o.address.lng } : null;
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { console.warn(e); toast(t('Could not save. Maybe another partner took this order.'), 'err'); } setBusy(false); };
@@ -119,7 +123,13 @@ function DeliveryCard({ o, me, available, phone, name }) {
         <a className="icon-btn round green" href={tel(o.address?.phone || o.customerPhone)} aria-label="Call customer"><Icon name="phone" size={18} /></a>
       </div>
       <div className="row between small"><span>{`${o.items.reduce((a, x) => a + x.qty, 0)} items`}</span>
-        <b>{o.payment === 'cod' ? `Collect cash ${rupee(o.total)}` : o.payment === 'upi_rider' ? `Collect UPI ${rupee(o.total)}` : 'Prepaid'}</b></div>
+        <b>{o.payment === 'cod' ? `Collect cash ${rupee(o.total)}` : o.payment === 'upi_rider' ? `Collect UPI ${rupee(o.total)}` : o.paid || o.paymentClaim ? 'Prepaid' : `UPI pending ${rupee(o.total)}`}</b></div>
+      {o.payment !== 'cod' && !o.paid && picked && (upiId || shop.upiQr) && (
+        <>
+          <button className="btn ghost block" onClick={() => setQr(!qr)}><Icon name="upi" size={18} /> {qr ? t('Hide QR') : t('Show restaurant UPI QR to customer')}</button>
+          {qr && <UpiQr upiId={upiId} upiName={shop.upiName || o.restUpiName} upiQr={shop.upiQr} amount={o.total} note={`PetPyaar order ${o.code}`} refId={o.code} size={240} />}
+        </>
+      )}
 
       {available && <button className="btn primary block" disabled={busy} onClick={() => run(() => patch('orders', o.id, { riderPhone: phone, riderName: name }))}><Icon name="check" size={18} /> Accept delivery</button>}
       {!available && !picked && (
@@ -129,8 +139,8 @@ function DeliveryCard({ o, me, available, phone, name }) {
       )}
       {!available && picked && <button className="btn green block lg" disabled={busy} onClick={() => setDone(true)}><Icon name="check" size={18} /> Delivered</button>}
       <Confirm open={done} onClose={() => setDone(false)} title="Mark as delivered?" okText="Yes, delivered"
-        text={o.payment === 'prepaid' || o.payment === 'upi_now' ? 'Hand over the food to the customer.' : `Make sure you collected ${rupee(o.total)} from the customer.`}
-        onOk={() => run(() => setStatus(o, 'delivered', { paid: true }))} />
+        text={o.payment === 'cod' ? `Make sure you collected ${rupee(o.total)} from the customer.` : o.paid || o.paymentClaim ? 'Hand over the food to the customer.' : `Make sure the customer paid ${rupee(o.total)} by UPI to the restaurant.`}
+        onOk={() => run(() => setStatus(o, 'delivered', o.payment === 'cod' ? { paid: true } : { paymentClaim: o.paymentClaim || 'rider' }))} />
     </div>
   );
 }

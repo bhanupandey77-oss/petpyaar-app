@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { hasUpi } from '../components/Pay.jsx';
 import { Sheet } from '../ui.jsx';
 import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '../lib/offers.js';
 import { LS } from '../lib/utils.js';
@@ -20,7 +21,12 @@ export default function CartPage({ nav, onPlaced }) {
   useSyncAddresses();
   const { list: addrs, sel } = useAddresses();
   const addr = addrs.find((a) => a.id === sel) || addrs[0];
-  const [pay, setPay] = useState('cod');
+  const upiNow = !!rest?.upiId && config.upiNowEnabled !== false;
+  const upiDel = hasUpi(rest) && config.upiEnabled !== false;
+  const cod = config.codEnabled !== false;
+  const [pay, setPay] = useState(() => LS.get('pp_pay', 'upi_now'));
+  const payOk = (p) => (p === 'upi_now' ? upiNow : p === 'upi_rider' ? upiDel : p === 'cod' ? cod : false);
+  useEffect(() => { if (rest && !payOk(pay)) setPay(upiNow ? 'upi_now' : upiDel ? 'upi_rider' : 'cod'); }, [rest?.id, rest?.upiId, rest?.upiQr]); // eslint-disable-line
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(false);
@@ -61,8 +67,10 @@ export default function CartPage({ nav, onPlaced }) {
         offer: discount ? applied : null, discount,
         address: { label: addr.label, name: addr.name, phone: addr.phone, line: addrLine(addr), lat: addr.lat || null, lng: addr.lng || null },
       });
-      if (pay === 'upi_now' && config.upiId) {
-        await upiPay(upiLink({ upiId: config.upiId, upiName: config.upiName, amount: total - discount + fee, note: `PetPyaar order`, ref: id }), '');
+      LS.set('pp_pay', pay);
+      if (pay === 'upi_now' && rest.upiId) {
+        // money goes straight to the restaurant's own UPI
+        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: total - discount + fee, note: `PetPyaar order ${rest.name}`, ref: id }), '');
       }
       cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
@@ -128,16 +136,18 @@ export default function CartPage({ nav, onPlaced }) {
 
         <div className="card">
           <h4>Payment</h4>
-          {config.codEnabled !== false && <PayOpt id="cod" cur={pay} set={setPay} icon="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
-          {config.upiEnabled !== false && <PayOpt id="upi_rider" cur={pay} set={setPay} icon="upi" title="UPI on delivery" sub="Scan & pay when food arrives" />}
-          {config.upiId && <PayOpt id="upi_now" cur={pay} set={setPay} icon="upi" title="Pay now by UPI" sub="Google Pay, PhonePe, Paytm…" />}
+          {upiNow && <PayOpt id="upi_now" cur={pay} set={setPay} icon="upi" title="Pay now by UPI" sub="Opens GPay / PhonePe / Paytm — money goes directly to the restaurant" tag="Fastest" />}
+          {upiDel && <PayOpt id="upi_rider" cur={pay} set={setPay} icon="upi" title="Pay on delivery by UPI" sub="Scan the restaurant's QR when food arrives" />}
+          {cod && <PayOpt id="cod" cur={pay} set={setPay} icon="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
+          {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added UPI yet, so only cash is available.</p>}
+          <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. PetPyaar never holds your money.</p>
         </div>
         <p className="tiny muted center">Restaurant can take 1-2 minutes to accept. You can cancel until it is accepted.</p>
       </div>
 
       <div className="place-bar">
         <div><b>{rupee(total - discount + fee)}</b><small>TOTAL</small></div>
-        <button className="btn primary lg grow" disabled={busy} onClick={place}>{busy ? 'Placing…' : !user ? 'Log in to order' : !addr ? 'Add address' : 'Place order'}</button>
+        <button className="btn primary lg grow" disabled={busy} onClick={place}>{busy ? 'Placing…' : !user ? 'Log in to order' : !addr ? 'Add address' : pay === 'upi_now' ? 'Pay & place order' : 'Place order'}</button>
       </div>
       <AddressForm open={form} onClose={() => setForm(false)} />
       <Sheet open={couponOpen} onClose={() => setCouponOpen(false)} title="Coupons for you">
@@ -174,11 +184,11 @@ export default function CartPage({ nav, onPlaced }) {
 
 const kcalHint = (k) => (k <= 600 ? 'A light meal, nicely balanced.' : k <= 1200 ? 'A filling meal — great to share or for one hungry person.' : 'A big feast! Perfect for sharing with family.');
 
-function PayOpt({ id, cur, set, icon, title, sub }) {
+function PayOpt({ id, cur, set, icon, title, sub, tag }) {
   return (
     <button className={'pay-opt' + (cur === id ? ' on' : '')} onClick={() => set(id)}>
       <Icon name={icon} size={22} />
-      <span className="grow"><b>{title}</b><small>{sub}</small></span>
+      <span className="grow"><b>{title}{tag && <em className="pay-tag">{tag}</em>}</b><small>{sub}</small></span>
       <i className="radio" />
     </button>
   );

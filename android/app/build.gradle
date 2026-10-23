@@ -17,6 +17,14 @@ android {
         }
     }
     signingConfigs {
+        // fixed debug key (committed on purpose) so the test APK always has the same SHA fingerprint
+        // that is registered in Firebase for Google sign-in and phone OTP
+        debug {
+            storeFile file('petpyaar-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
         release {
             // CI (GitHub Actions) में keystore इन environment variables से मिलता है
             def ks = System.getenv("KEYSTORE_FILE")
@@ -29,6 +37,7 @@ android {
         }
     }
     buildTypes {
+        debug { signingConfig signingConfigs.debug }
         release {
             if (System.getenv("KEYSTORE_FILE")) { signingConfig signingConfigs.release }
             minifyEnabled false

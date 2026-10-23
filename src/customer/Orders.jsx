@@ -7,6 +7,7 @@ import { rupee, fmtDateTime, fmtTime, tel, plain, km, ms, systemNotify } from '.
 import MapView from '../components/MapView.jsx';
 import { TopBar } from './RestaurantPage.jsx';
 import { t, tr } from '../i18n/index.js';
+import { UpiQr, UpiButton } from '../components/Pay.jsx';
 
 export function OrdersList({ orders, nav }) {
   const { user, askLogin } = useApp();
@@ -108,6 +109,8 @@ export function TrackOrder({ id, fresh, nav }) {
           {o.restaurantPhone && <a className="icon-btn round" href={tel(o.restaurantPhone)} aria-label="Call restaurant"><Icon name="phone" size={20} /></a>}
         </div>
 
+        <PayBox o={o} />
+
         {o.status === 'delivered' && !o.rating && (
           <div className="card center">
             <b>How was your food?</b>
@@ -123,7 +126,7 @@ export function TrackOrder({ id, fresh, nav }) {
           ))}
           {o.discount > 0 && <div className="bill t-green"><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span className="t-green">{o.deliveryFee ? rupee(o.deliveryFee) : 'FREE'}</span></div>
-          <div className="bill total"><span>{o.payment === 'cod' ? 'To pay in cash' : o.payment === 'upi_rider' ? 'To pay by UPI on delivery' : 'Paid by UPI'}</span><span>{rupee(o.total)}</span></div>
+          <div className="bill total"><span>{o.payment === 'cod' ? 'To pay in cash' : o.payment === 'upi_rider' ? 'To pay by UPI on delivery' : o.paid || o.paymentClaim ? 'Paid by UPI' : 'To pay by UPI'}</span><span>{rupee(o.total)}</span></div>
           {o.kcal > 0 && <p className="tiny muted"><Icon name="fire" size={12} /> {`About ${o.kcal} kcal`}</p>}
           <p className="tiny muted">{fmtDateTime(o.createdMs)} · <span data-notr="">{o.address?.line}</span></p>
           {o.note && <p className="tiny muted">{`Note: ${o.note}`}</p>}
@@ -133,6 +136,35 @@ export function TrackOrder({ id, fresh, nav }) {
       </div>
       <Confirm open={cancel} onClose={() => setCancel(false)} danger title="Cancel this order?" text="The restaurant has not accepted it yet, so you can cancel for free." okText="Yes, cancel"
         onOk={() => setStatus(o, 'cancelled', { cancelReason: 'Cancelled by customer' }).catch(() => toast(t('Could not cancel. The restaurant may have accepted already.'), 'err'))} />
+    </div>
+  );
+}
+
+/* payment straight to the restaurant's UPI */
+function PayBox({ o }) {
+  const toast = useToast();
+  const [show, setShow] = useState(false);
+  if (o.payment === 'cod' || ['rejected', 'cancelled'].includes(o.status)) return null;
+  if (o.paid) return <div className="card pay-box ok"><Icon name="shield" size={22} /><div><b>Payment received</b><small>The restaurant confirmed your UPI payment</small></div></div>;
+  const claim = async () => { try { await patch('orders', o.id, { paymentClaim: 'paid', claimMs: Date.now() }); toast(t('Thanks! The restaurant will confirm your payment.')); } catch { toast(t('Could not save'), 'err'); } };
+  const ref = o.code;
+  if (o.paymentClaim) return <div className="card pay-box wait"><Icon name="clock" size={22} /><div><b>Payment done — waiting for restaurant to confirm</b><small>Keep the UPI receipt until the food arrives</small></div></div>;
+  if (o.payment === 'upi_now') return (
+    <div className="card pay-box">
+      <b>Complete your UPI payment</b>
+      <p className="tiny muted">{`Pay ${rupee(o.total)} directly to ${o.restaurantName}`}</p>
+      <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} label="Open UPI app" />
+      <div className="row gap"><button className="btn ghost grow small" onClick={() => setShow(!show)}>{show ? 'Hide QR' : 'Show QR'}</button><button className="btn green grow small" onClick={claim}><Icon name="check" size={16} /> I have paid</button></div>
+      {show && <UpiQr upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} />}
+    </div>
+  );
+  // upi on delivery
+  return (
+    <div className="card pay-box">
+      <b>Pay by UPI when your food arrives</b>
+      <p className="tiny muted">{`${rupee(o.total)} goes directly to ${o.restaurantName}. The delivery partner will also show the QR.`}</p>
+      {o.status === 'picked' && <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} label="Pay now" />}
+      {o.status === 'picked' && <button className="btn green block small" onClick={claim}><Icon name="check" size={16} /> I have paid</button>}
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantA
 import MenuManager from '../restaurant/MenuManager.jsx';
 import MapView from '../components/MapView.jsx';
 import Promos from './Promos.jsx';
+import { UpiEditor } from '../components/Pay.jsx';
+import { dueOf } from '../restaurant/RestaurantApp.jsx';
 import { t } from '../i18n/index.js';
 
 export default function AdminApp() {
@@ -51,7 +53,7 @@ export default function AdminApp() {
 }
 
 /* when the app ships new starter dishes/offers, add the missing ones automatically (never overwrites edits) */
-const SEED_V = 'v2';
+const SEED_V = 'v3';
 function useAutoSeed() {
   const items = useItems();
   const rests = useRestaurants();
@@ -64,6 +66,10 @@ function useAutoSeed() {
       ...ITEMS.filter((i) => !haveI.has(i.id)).map((i) => ['set', 'items', i.id, i]),
       ...ITEMS.filter((i) => haveI.has(i.id) && !items.find((x) => x.id === i.id).gallery).map((i) => ['set', 'items', i.id, { gallery: i.gallery }]),
       ...OFFERS.map((o) => ['set', 'offers', o.id, o]),
+      // v3: one role per number — admin / Raju Lassi / rider
+      ...STAFF.map((x) => ['set', 'staff', x.phone, x]),
+      ...RESTAURANTS.filter((r) => r.id === 'raju-lassi').map((r) => ['set', 'restaurants', r.id, { ownerPhone: r.ownerPhone }]),
+      ['set', 'config', 'app', { riders: STAFF.filter((x) => x.rider).map((x) => ({ phone: x.phone, name: x.name })) }],
     ];
     if (!ops.length) { localStorage.setItem('pp_seed', SEED_V); return; }
     bulk(ops).then(() => { localStorage.setItem('pp_seed', SEED_V); toast(t('New dishes, photos & offers added')); }).catch((e) => console.warn('autoseed', e));
@@ -276,7 +282,7 @@ function Settings() {
     try {
       await put('config', 'app', {
         commissionPct: Number(f.commissionPct) || 0, customerDeliveryFee: Number(f.customerDeliveryFee) || 0, restaurantDeliveryCharge: Number(f.restaurantDeliveryCharge) || 0,
-        minOrder: Number(f.minOrder) || 0, upiId: (f.upiId || '').trim(), upiName: (f.upiName || '').trim(), supportPhone: (f.supportPhone || '').trim(),
+        minOrder: Number(f.minOrder) || 0, supportPhone: (f.supportPhone || '').trim(), upiNowEnabled: f.upiNowEnabled !== false,
         serviceArea: f.serviceArea || '', codEnabled: !!f.codEnabled, upiEnabled: !!f.upiEnabled, showCalories: !!f.showCalories,
       });
       toast(t('Saved'));
@@ -297,10 +303,10 @@ function Settings() {
       </div>
       <div className="card">
         <h4>Payments</h4>
+        <p className="tiny muted">Customers pay each restaurant's own UPI. PetPyaar never holds customer money.</p>
+        <label className="check-row"><input type="checkbox" checked={f.upiNowEnabled !== false} onChange={(e) => setF({ ...f, upiNowEnabled: e.target.checked })} /> Pay now by UPI</label>
+        <label className="check-row"><input type="checkbox" checked={!!f.upiEnabled} onChange={(e) => setF({ ...f, upiEnabled: e.target.checked })} /> Pay on delivery by UPI</label>
         <label className="check-row"><input type="checkbox" checked={!!f.codEnabled} onChange={(e) => setF({ ...f, codEnabled: e.target.checked })} /> Cash on delivery</label>
-        <label className="check-row"><input type="checkbox" checked={!!f.upiEnabled} onChange={(e) => setF({ ...f, upiEnabled: e.target.checked })} /> UPI on delivery</label>
-        <Field label="Merchant UPI ID (for Pay now)" hint="Use a merchant/business UPI ID; personal IDs get blocked by UPI apps"><input className="input" value={f.upiId} onChange={set('upiId')} placeholder="yourshop@okaxis" /></Field>
-        <Field label="UPI name"><input className="input" value={f.upiName} onChange={set('upiName')} /></Field>
       </div>
       <div className="card">
         <h4>App</h4>
@@ -309,7 +315,43 @@ function Settings() {
         <label className="check-row"><input type="checkbox" checked={!!f.showCalories} onChange={(e) => setF({ ...f, showCalories: e.target.checked })} /> Show calories on dishes</label>
       </div>
       <button className="btn primary block lg" onClick={save}>Save settings</button>
+      <UpiEditor value={config} title="PetPyaar UPI — restaurants send commission here" hint="Restaurants see this UPI ID and QR in their Earnings tab when paying PetPyaar dues."
+        onSave={(v) => put('config', 'app', v)} />
+      <Settlements />
       <SeedCard small />
+    </div>
+  );
+}
+
+/* commission payments sent by restaurants */
+function Settlements() {
+  const toast = useToast();
+  const list = useList('settlements', [], []);
+  const rests = useRestaurants() || [];
+  const all = useList('orders', [['status', '==', 'delivered']], []);
+  if (!list) return null;
+  const sorted = [...list].sort((a, b) => b.createdMs - a.createdMs);
+  const setSt = (x, status) => patch('settlements', x.id, { status, checkedMs: Date.now() }).then(() => toast(t('Saved'))).catch(() => toast(t('Could not save'), 'err'));
+  return (
+    <div className="card">
+      <h4><Icon name="wallet" size={18} /> Commission from restaurants</h4>
+      {all && rests.map((r) => {
+        const owed = all.filter((o) => o.restaurantId === r.id).reduce((a, o) => a + dueOf(o), 0);
+        const got = list.filter((x) => x.restaurantId === r.id && x.status !== 'rejected').reduce((a, x) => a + Number(x.amount || 0), 0);
+        const left = Math.round((owed - got) * 100) / 100;
+        if (!owed && !got) return null;
+        return <div key={r.id} className="bill small"><span data-notr="">{r.name}</span><span>{left > 0 ? <b className="t-red">{rupee(left)}</b> : <b className="t-green">✓</b>}</span></div>;
+      })}
+      {sorted.map((x) => (
+        <div key={x.id} className="sett-row">
+          <div className="grow"><b data-notr="">{x.restaurantName}</b><small className="muted">{fmtDateTime(x.createdMs)}{x.utr ? ` · UTR ${x.utr}` : ''}</small></div>
+          <b>{rupee(x.amount)}</b>
+          {x.status === 'claimed' ? (
+            <span className="row gap"><button className="btn small green" onClick={() => setSt(x, 'confirmed')}>Got it</button><button className="btn small ghost danger-text" onClick={() => setSt(x, 'rejected')}>Not received</button></span>
+          ) : <em className={'st-mini ' + x.status}>{x.status === 'confirmed' ? t('Confirmed') : t('Rejected')}</em>}
+        </div>
+      ))}
+      {!sorted.length && <p className="tiny muted">No commission payments yet</p>}
     </div>
   );
 }

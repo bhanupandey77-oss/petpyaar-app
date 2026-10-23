@@ -88,13 +88,13 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
   const now = Date.now();
   const order = {
     code: shortId(), day: todayKey(), createdAt: serverTimestamp(), createdMs: now,
-    customerUid: user.uid, customerPhone: user.phoneNumber, customerName,
+    customerUid: user.uid, customerPhone: user.phoneNumber || (address?.phone ? '+91' + String(address.phone).replace(/\D/g, '').slice(-10) : ''), customerName,
     address, restaurantId: rest.id, restaurantName: rest.name, restaurantPhone: rest.ownerPhone || '', restaurantAddr: rest.address || '',
-    restLat: rest.lat || null, restLng: rest.lng || null,
+    restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0 })),
     itemTotal: total, deliveryFee, discount: disc, offerCode: disc ? offer.code : '', discountBy, total: total - disc + deliveryFee, kcal,
     commissionPct: pct, commission, restDelivery, payable: r2(base - commission - restDelivery),
-    payment, paid: false, note: note || '',
+    payment, paid: false, paymentClaim: '', note: note || '',
     status: 'placed', riderPhone: '', riderName: '', prepMins: rest.prepMins || 20,
     timeline: { placed: now },
   };

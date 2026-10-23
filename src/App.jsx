@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { auth, onAuthStateChanged, signOut, watchDoc } from './lib/fb.js';
+import { auth, onAuthStateChanged, fullSignOut, watchDoc } from './lib/fb.js';
 import { LS } from './lib/utils.js';
 import { SUPER_ADMIN } from './firebase-config.js';
 import { DEFAULT_CONFIG } from './data/menu.js';
@@ -32,7 +32,7 @@ export default function App() {
   const [splash, setSplash] = useState(true);
 
   useEffect(() => { const t = setTimeout(() => setSplash(false), 2200); return () => clearTimeout(t); }, []);
-  useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); if (u) setLoginOpen(false); }), []);
+  useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
   useEffect(() => watchDoc('config', 'app', (d) => d && setConfig({ ...DEFAULT_CONFIG, ...d })), []);
   const phone = user?.phoneNumber || '';
   useEffect(() => {
@@ -42,16 +42,18 @@ export default function App() {
   }, [phone]);
 
   const roles = useMemo(() => {
-    const r = ['customer'];
+    // staff numbers get only their work role(s); everyone else is a customer
+    const r = [];
+    if (phone === SUPER_ADMIN || staff?.admin) r.push('admin');
     if (staff?.restaurant) r.push('restaurant');
     if (staff?.rider) r.push('rider');
-    if (phone === SUPER_ADMIN || staff?.admin) r.push('admin');
+    if (!r.length || staff?.customer) r.push('customer');
     return r;
   }, [staff, phone]);
 
   const setRole = (r) => { LS.set('pp_role', r); setRoleState(r); window.scrollTo(0, 0); };
-  const logout = async () => { LS.del('pp_role'); setRoleState(null); await signOut(auth); };
-  const activeRole = user && roles.includes(role) ? role : (user && roles.length > 1 ? null : 'customer');
+  const logout = async () => { LS.del('pp_role'); setRoleState(null); await fullSignOut(); location.reload(); };
+  const activeRole = !user ? 'customer' : roles.includes(role) ? role : roles.length > 1 ? null : roles[0];
 
   const value = { user, phone, staff, config, roles, role: activeRole, setRole, logout, askLogin: () => setLoginOpen(true) };
 
