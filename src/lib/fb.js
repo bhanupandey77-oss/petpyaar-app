@@ -27,7 +27,9 @@ import { Capacitor } from '@capacitor/core';
 const NATIVE = Capacitor.isNativePlatform();
 let verifier = null;
 let FA = null;
-const fa = async () => (FA = FA || (await import('@capacitor-firebase/authentication')).FirebaseAuthentication);
+// NOTE: never return a Capacitor plugin proxy from an async function — `await` would call proxy.then() and hang forever.
+// So we return the module and read .FirebaseAuthentication synchronously.
+const faMod = async () => (FA = FA || (await import('@capacitor-firebase/authentication')));
 
 // native (Android) phone OTP; resolves with { confirm } or rejects; gives up after `ms`
 function nativeOtp(F, phone, ms) {
@@ -72,7 +74,7 @@ export async function sendOtp(phone10, containerId) {
   if (NATIVE) {
     let F = null;
     try {
-      F = await fa();
+      F = (await faMod()).FirebaseAuthentication;
       await F.removeAllListeners();
       return await nativeOtp(F, phone, 25000);
     } catch (e) {
@@ -88,7 +90,7 @@ export async function sendOtp(phone10, containerId) {
 /* ---------- Google ---------- */
 export async function googleSignIn() {
   if (NATIVE) {
-    const F = await fa();
+    const F = (await faMod()).FirebaseAuthentication;
     const r = await F.signInWithGoogle();
     const idToken = r?.credential?.idToken;
     if (!idToken) throw Object.assign(new Error('Google sign-in cancelled'), { code: 'auth/cancelled' });
@@ -98,7 +100,7 @@ export async function googleSignIn() {
   return signInWithPopup(auth, p);
 }
 export async function fullSignOut() {
-  if (NATIVE) { try { (await fa()).signOut(); } catch { /* ignore */ } }
+  if (NATIVE) { try { await (await faMod()).FirebaseAuthentication.signOut(); } catch { /* ignore */ } }
   return signOut(auth);
 }
 

@@ -4,11 +4,11 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 export const isNative = Capacitor.isNativePlatform();
 
 let LN = null;
-const ln = async () => (LN = LN || (await import('@capacitor/local-notifications')).LocalNotifications);
+const lnMod = async () => (LN = LN || (await import('@capacitor/local-notifications'))); // return the module, not the plugin proxy (await on a proxy hangs)
 
 export async function nativeAskNotify() {
   try {
-    const L = await ln();
+    const L = (await lnMod()).LocalNotifications;
     const p = await L.checkPermissions();
     if (p.display !== 'granted') await L.requestPermissions();
     await L.createChannel?.({ id: 'orders', name: 'Orders', importance: 5, visibility: 1, vibration: true });
@@ -17,7 +17,7 @@ export async function nativeAskNotify() {
 let nid = 1;
 export async function nativeNotify(title, body) {
   try {
-    const L = await ln();
+    const L = (await lnMod()).LocalNotifications;
     await L.schedule({ notifications: [{ id: (Date.now() % 100000) * 10 + (nid++ % 10), title, body, channelId: 'orders', smallIcon: 'ic_stat_notify' }] });
   } catch (e) { console.warn('notify', e); }
 }
