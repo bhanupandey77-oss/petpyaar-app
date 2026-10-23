@@ -75,10 +75,13 @@ export function cartTotals(c) {
 export const ACTIVE = ['placed', 'accepted', 'preparing', 'ready', 'picked'];
 export const r2 = (n) => Math.round(n * 100) / 100;
 
-export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note }) {
+export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note, offer, discount = 0 }) {
   const { list, total, kcal } = cartTotals(cartData);
   const pct = Number(rest.commissionPct ?? config.commissionPct ?? 0);
-  const commission = r2((total * pct) / 100);
+  const disc = Math.max(0, Math.min(Number(discount) || 0, total));
+  const discountBy = disc ? (offer?.fundedBy === 'restaurant' ? 'restaurant' : 'admin') : '';
+  const base = discountBy === 'restaurant' ? total - disc : total; // restaurant-funded discount lowers the commission base
+  const commission = r2((base * pct) / 100);
   const restDelivery = Number(rest.deliveryCharge ?? config.restaurantDeliveryCharge ?? 0);
   const deliveryFee = Number(config.customerDeliveryFee || 0);
   const id = newId('orders');
@@ -89,8 +92,8 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     address, restaurantId: rest.id, restaurantName: rest.name, restaurantPhone: rest.ownerPhone || '', restaurantAddr: rest.address || '',
     restLat: rest.lat || null, restLng: rest.lng || null,
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0 })),
-    itemTotal: total, deliveryFee, total: total + deliveryFee, kcal,
-    commissionPct: pct, commission, restDelivery, payable: r2(total - commission - restDelivery),
+    itemTotal: total, deliveryFee, discount: disc, offerCode: disc ? offer.code : '', discountBy, total: total - disc + deliveryFee, kcal,
+    commissionPct: pct, commission, restDelivery, payable: r2(base - commission - restDelivery),
     payment, paid: false, note: note || '',
     status: 'placed', riderPhone: '', riderName: '', prepMins: rest.prepMins || 20,
     timeline: { placed: now },

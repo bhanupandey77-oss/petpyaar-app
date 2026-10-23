@@ -123,6 +123,7 @@ export function OrderCard({ o, riders, showRest, admin }) {
         {o.items.map((x) => <div key={x.id}><VegMark size={11} /> <b>{x.qty} ×</b> {x.name}</div>)}
       </div>
       {o.note && <div className="oc-note">{`“${o.note}”`}</div>}
+      {o.discount > 0 && <div className="tiny t-green">{`Coupon ${o.offerCode}: − ${rupee(o.discount)}`}{o.discountBy === 'restaurant' ? '' : ` (${t('paid by PetPyaar')})`}</div>}
       <div className="row between small">
         <span>{o.customerName} · <a href={tel(o.customerPhone)}>{plain(o.customerPhone)}</a></span>
         <b>{rupee(o.total)} <small className="muted">{o.payment === 'cod' ? 'Cash' : 'UPI'}</small></b>
@@ -183,6 +184,7 @@ export function Earnings({ orders, title }) {
       </div>
       <div className="money-grid">
         <div className="mg big"><small>Food sales</small><b>{rupee(sum('itemTotal'))}</b><span>{`${list.length} orders delivered`}</span></div>
+        {sum('discount') > 0 && <div className="mg"><small>Your coupon discounts</small><b className="t-red">− {rupee(list.filter((o) => o.discountBy === 'restaurant').reduce((a, o) => a + Number(o.discount || 0), 0))}</b></div>}
         <div className="mg"><small>PetPyaar fee</small><b className="t-red">− {rupee(sum('commission'))}</b></div>
         <div className="mg"><small>Delivery cost</small><b className="t-red">− {rupee(sum('restDelivery'))}</b></div>
         <div className="mg big green"><small>Your earning</small><b>{rupee(sum('payable'))}</b></div>

@@ -1,5 +1,6 @@
 // Starter data — 100% vegetarian. Calories are rough estimates per serving shown.
 import { photo } from './photos.js';
+import { extraPhotos } from './gallery.js';
 
 export const CATEGORIES = [
   { id: 'sweets', name: 'Sweets', img: 'gulab_jamun' },
@@ -9,6 +10,8 @@ export const CATEGORIES = [
   { id: 'northindian', name: 'North Indian', img: 'pbm' },
   { id: 'chaat', name: 'Snacks & Chaat', img: 'pani_puri' },
   { id: 'thali', name: 'Thali & Rice', img: 'thali' },
+  { id: 'southindian', name: 'South Indian', img: 'idli' },
+  { id: 'icecream', name: 'Ice Cream & Desserts', img: 'sundae' },
 ].map((c) => ({ ...c, img: photo(c.img) }));
 
 // Haidergarh, Barabanki (approx.) — each restaurant can set its exact spot from its panel
@@ -39,10 +42,23 @@ export const RESTAURANTS = [
     cover: photo('jalebi'), rating: 4.5, prepMins: 10, open: true, demo: true,
     address: 'Tehsil Chauraha, Haidergarh', lat: HG.lat + 0.002, lng: HG.lng + 0.005, sort: 4,
   },
+  {
+    id: 'sagar-south', name: 'Sagar South Indian', ownerPhone: '', ownerName: '',
+    tagline: 'Idli, dosa, uttapam & hot breakfast', cuisines: ['southindian'],
+    cover: photo('idli'), rating: 4.4, prepMins: 15, open: true, demo: true,
+    address: 'Station Road, Haidergarh', lat: HG.lat - 0.004, lng: HG.lng - 0.002, sort: 5,
+  },
+  {
+    id: 'cafe-chill', name: 'Cafe Chill', ownerPhone: '', ownerName: '',
+    tagline: 'Shakes, sundaes, pasta & pizza', cuisines: ['icecream', 'fastfood'],
+    cover: photo('sundae'), rating: 4.5, prepMins: 15, open: true, demo: true,
+    address: 'Near Inter College, Haidergarh', lat: HG.lat + 0.005, lng: HG.lng + 0.002, sort: 6,
+  },
 ];
 
 const I = (restaurantId, key, name, cat, price, kcal, qty, desc, extra = {}) => ({
   id: `${restaurantId}--${key}`, restaurantId, name, cat, price, kcal, qty, desc, img: photo(extra.img || key),
+  gallery: [photo(extra.img || key), ...extraPhotos(extra.img || key)].filter(Boolean),
   veg: true, available: true, bestseller: !!extra.best, sort: extra.sort || 0,
 });
 
@@ -73,7 +89,7 @@ export const ITEMS = [
   I('annapurna', 'veg_biryani', 'Veg Biryani', 'thali', 110, 520, '1 plate', 'Fragrant rice with vegetables & raita'),
   I('annapurna', 'chole_bhature', 'Chole Bhature', 'northindian', 80, 650, '2 bhature', 'Spicy chole with fluffy bhature'),
   I('annapurna', 'paratha', 'Aloo Paratha', 'northindian', 60, 560, '2 pieces + curd', 'Stuffed potato paratha with butter'),
-  I('annapurna', 'masala_dosa', 'Masala Dosa', 'thali', 70, 380, '1 dosa', 'Crispy dosa, sambar & chutney'),
+  I('annapurna', 'masala_dosa', 'Masala Dosa', 'southindian', 70, 380, '1 dosa', 'Crispy dosa, sambar & chutney'),
 
   // Dragon Chinese & Fast Food
   I('dragon-chinese', 'chowmein', 'Veg Chowmein', 'chinese', 70, 450, 'Full plate', 'Street-style noodles with vegetables', { best: true }),
@@ -104,12 +120,71 @@ export const ITEMS = [
   I('mithaas', 'pani_puri', 'Pani Puri', 'chaat', 30, 220, '6 pieces', 'Tangy pani, aloo & chana'),
   I('mithaas', 'aloo_tikki', 'Aloo Tikki Chaat', 'chaat', 40, 350, '2 tikki', 'Tikki with curd, chutneys & sev'),
   I('mithaas', 'dahi_bhalla', 'Dahi Bhalla', 'chaat', 50, 320, '3 pieces', 'Soft bhalla in sweet curd'),
+
+  // --- more dishes ---
+  I('raju-lassi', 'chaas', 'Masala Chaas', 'lassi', 20, 70, '1 glass (300 ml)', 'Spiced buttermilk with roasted jeera'),
+  I('raju-lassi', 'thandai', 'Kesar Thandai', 'lassi', 60, 300, '1 glass', 'Chilled milk with dry fruits, saunf & saffron'),
+  I('raju-lassi', 'badam_milk', 'Badam Milk', 'lassi', 50, 260, '1 glass', 'Warm or chilled almond milk'),
+
+  I('mithaas', 'gajar_halwa', 'Gajar ka Halwa', 'sweets', 60, 330, '100 g', 'Slow-cooked carrot halwa with khoya & nuts', { best: true }),
+  I('mithaas', 'kheer', 'Seviyan Kheer', 'sweets', 50, 280, '1 bowl', 'Vermicelli cooked in sweet milk with raisins'),
+  I('mithaas', 'malpua', 'Malpua with Rabri', 'sweets', 50, 420, '2 pieces', 'Soft fried malpua soaked in syrup'),
+  I('mithaas', 'imarti', 'Imarti', 'sweets', 40, 380, '100 g', 'Urad dal imarti in sugar syrup'),
+  I('mithaas', 'balushahi', 'Balushahi', 'sweets', 40, 380, '2 pieces', 'Flaky glazed balushahi'),
+  I('mithaas', 'moong_halwa', 'Moong Dal Halwa', 'sweets', 80, 450, '100 g', 'Rich ghee moong dal halwa'),
+  I('mithaas', 'papdi_chaat', 'Papdi Chaat', 'chaat', 40, 300, '1 plate', 'Crispy papdi, curd, chutneys & sev', { best: true }),
+  I('mithaas', 'bhel', 'Bhel Puri', 'chaat', 40, 280, '1 plate', 'Puffed rice, onion, tomato & tangy chutney'),
+  I('mithaas', 'dhokla', 'Khaman Dhokla', 'chaat', 40, 220, '4 pieces', 'Soft steamed besan dhokla with tadka'),
+  I('mithaas', 'bread_pakora', 'Bread Pakora', 'chaat', 30, 420, '2 pieces', 'Aloo-stuffed bread pakora with chutney'),
+  I('mithaas', 'paneer_pakora', 'Paneer Pakora', 'chaat', 70, 380, '6 pieces', 'Crispy besan-coated paneer'),
+
+  I('dragon-chinese', 'fried_momos', 'Veg Fried Momos', 'chinese', 70, 420, '8 pieces', 'Golden fried momos with spicy chutney'),
+  I('dragon-chinese', 'manchow', 'Veg Manchow Soup', 'chinese', 70, 150, '1 bowl', 'Hot & spicy soup with crispy noodles'),
+  I('dragon-chinese', 'chilli_mushroom', 'Chilli Mushroom', 'chinese', 120, 320, 'Full plate', 'Mushroom tossed in chilli-garlic sauce'),
+  I('dragon-chinese', 'schezwan', 'Schezwan Noodles', 'chinese', 100, 520, 'Full plate', 'Fiery schezwan sauce noodles'),
+
+  I('annapurna', 'rajma', 'Rajma Chawal', 'thali', 90, 550, '1 plate', 'Homestyle rajma with steamed rice', { best: true }),
+  I('annapurna', 'kadhi', 'Kadhi Chawal', 'thali', 80, 480, '1 plate', 'Pakodi kadhi with steamed rice'),
+  I('annapurna', 'malai_kofta', 'Malai Kofta', 'northindian', 160, 520, 'Half plate', 'Paneer-potato koftas in creamy gravy'),
+  I('annapurna', 'palak_paneer', 'Palak Paneer', 'northindian', 150, 380, 'Half plate', 'Paneer cubes in smooth spinach gravy'),
+  I('annapurna', 'matar_paneer', 'Matar Paneer', 'northindian', 140, 420, 'Half plate', 'Green peas & paneer in tomato gravy'),
+  I('annapurna', 'dal_tadka', 'Dal Tadka', 'northindian', 90, 280, 'Half plate', 'Yellow dal with ghee-jeera tadka'),
+  I('annapurna', 'mix_veg', 'Mix Veg', 'northindian', 110, 250, 'Half plate', 'Seasonal vegetables in light masala'),
+  I('annapurna', 'lachha', 'Lachha Paratha', 'northindian', 35, 300, '1 piece', 'Layered crispy tandoori paratha'),
+  I('annapurna', 'puri_sabzi', 'Puri Sabzi', 'thali', 60, 550, '4 puri + sabzi', 'Fluffy puris with aloo sabzi'),
+  I('annapurna', 'pulao', 'Veg Pulao', 'thali', 90, 420, '1 plate', 'Mildly spiced rice with vegetables'),
+  I('annapurna', 'kulcha', 'Amritsari Kulcha', 'northindian', 90, 620, '2 kulcha + chole', 'Stuffed tandoori kulcha with chole'),
+
+  I('sagar-south', 'idli', 'Idli Sambar', 'southindian', 50, 300, '3 idli', 'Soft idli with sambar & coconut chutney', { best: true }),
+  I('sagar-south', 'plain_dosa', 'Plain Dosa', 'southindian', 50, 250, '1 dosa', 'Crispy dosa with sambar & chutney'),
+  I('sagar-south', 'masala_dosa', 'Masala Dosa', 'southindian', 70, 380, '1 dosa', 'Dosa stuffed with spiced potato', { best: true }),
+  I('sagar-south', 'uttapam', 'Onion Tomato Uttapam', 'southindian', 70, 330, '1 uttapam', 'Thick dosa topped with onion & tomato'),
+  I('sagar-south', 'medu_vada', 'Medu Vada', 'southindian', 50, 320, '2 pieces', 'Crispy urad dal vada with sambar'),
+  I('sagar-south', 'upma', 'Rava Upma', 'southindian', 40, 250, '1 plate', 'Semolina upma with veggies'),
+  I('sagar-south', 'poha', 'Indori Poha', 'southindian', 30, 270, '1 plate', 'Poha with peanuts, sev & lemon'),
+  I('sagar-south', 'curd_rice', 'Curd Rice', 'southindian', 60, 330, '1 bowl', 'Cooling curd rice with tempering'),
+
+  I('cafe-chill', 'choco_shake', 'Chocolate Shake', 'lassi', 90, 450, '1 glass (350 ml)', 'Thick chocolate shake with cream', { best: true }),
+  I('cafe-chill', 'straw_shake', 'Strawberry Shake', 'lassi', 80, 380, '1 glass (350 ml)', 'Strawberry shake topped with cream'),
+  I('cafe-chill', 'lime_soda', 'Fresh Lime Soda', 'lassi', 40, 90, '1 glass', 'Sweet or salted, with fresh lime'),
+  I('cafe-chill', 'icecream', 'Ice Cream (2 scoops)', 'icecream', 60, 270, '2 scoops', 'Vanilla, chocolate or butterscotch'),
+  I('cafe-chill', 'sundae', 'Strawberry Sundae', 'icecream', 120, 520, '1 sundae', 'Ice cream, strawberries, wafer & sauce', { best: true }),
+  I('cafe-chill', 'pasta', 'Red Sauce Pasta', 'fastfood', 130, 520, '1 plate', 'Penne in tangy tomato sauce with herbs'),
+  I('cafe-chill', 'garlic_bread', 'Cheese Garlic Bread', 'fastfood', 90, 380, '4 pieces', 'Toasted garlic bread with cheese'),
+  I('cafe-chill', 'maggi', 'Vegetable Maggi', 'fastfood', 50, 350, '1 plate', 'Masala maggi loaded with veggies'),
+  I('cafe-chill', 'veg_pizza', 'Farm Veg Pizza', 'fastfood', 179, 850, '8 inch', 'Capsicum, onion, olives, corn & cheese'),
 ];
 
 export const BANNERS = [
   { id: 'b1', title: 'Pure veg. Pure pyaar.', sub: '100% vegetarian kitchens of Haidergarh', img: photo('ban_thali'), sort: 1 },
   { id: 'b2', title: 'FREE delivery', sub: 'No delivery charge on any order', img: photo('chowmein'), sort: 2 },
   { id: 'b3', title: 'Mithai by the box', sub: 'Fresh sweets for every occasion', img: photo('ban_sweets'), sort: 3 },
+];
+
+export const OFFERS = [
+  { id: 'welcome', code: 'PYAAR20', title: '20% off on your order', sub: 'On all restaurants', type: 'percent', value: 20, minOrder: 149, maxOff: 50, restaurantId: '', fundedBy: 'admin', active: true, color: '#e8461a', until: '', sort: 1 },
+  { id: 'sweet50', code: 'MITHAI50', title: 'Flat ₹50 off on sweets', sub: 'Mithaas Sweets & Chaat', type: 'flat', value: 50, minOrder: 299, maxOff: 0, restaurantId: 'mithaas', fundedBy: 'restaurant', active: true, color: '#d4307a', until: '', sort: 2 },
+  { id: 'lassi10', code: 'LASSI10', title: '10% off at Raju Lassi', sub: 'Thick lassi, cool deal', type: 'percent', value: 10, minOrder: 99, maxOff: 30, restaurantId: 'raju-lassi', fundedBy: 'restaurant', active: true, color: '#7a4fe0', until: '', sort: 3 },
 ];
 
 export const DEFAULT_CONFIG = {

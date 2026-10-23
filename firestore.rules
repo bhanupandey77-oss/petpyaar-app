@@ -25,6 +25,10 @@ service cloud.firestore {
       allow create: if isAdmin() || ownsRest(request.resource.data.restaurantId);
       allow update, delete: if isAdmin() || ownsRest(resource.data.restaurantId);
     }
+    match /offers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     match /banners/{id} {
       allow read: if true;
       allow write: if isAdmin();

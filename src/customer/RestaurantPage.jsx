@@ -5,6 +5,8 @@ import { useRestaurants, useItems, useCart, cartStore } from '../lib/data.js';
 import { CATEGORIES } from '../data/menu.js';
 import { rupee } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
+import DishView from '../components/DishView.jsx';
+import { useOffers, forRestaurant, offerLabel, offerTerms } from '../lib/offers.js';
 
 export default function RestaurantPage({ id, nav }) {
   const { config } = useApp();
@@ -13,6 +15,7 @@ export default function RestaurantPage({ id, nav }) {
   const [q, setQ] = useState('');
   const [view, setView] = useState(null);
   const items = all.filter((i) => i.restaurantId === id);
+  const offers = forRestaurant(useOffers(), id);
   const groups = useMemo(() => {
     const list = items.filter((i) => !q || i.name.toLowerCase().includes(q.toLowerCase()));
     const best = list.filter((i) => i.bestseller);
@@ -43,6 +46,16 @@ export default function RestaurantPage({ id, nav }) {
         </div>
         <div className="rp-addr"><Icon name="pin" size={15} /> <span data-notr="">{rest.address}</span></div>
         <div className="rp-offer"><Icon name="bike" size={18} /> <b>FREE delivery</b> on every order</div>
+        {offers.length > 0 && (
+          <div className="rp-offers">
+            {offers.map((o) => (
+              <div key={o.id} className="rp-coupon" style={{ '--c': o.color || '#e8461a' }}>
+                <span className="rpc-ic"><Icon name="star" size={16} fill="#fff" stroke={0} /></span>
+                <div><b>{offerLabel(o)}</b><small><span data-notr="">{o.code}</span>{offerTerms(o) ? ` · ${t(offerTerms(o))}` : ''}</small></div>
+              </div>
+            ))}
+          </div>
+        )}
         {rest.open === false && <div className="alert alert-red">This restaurant is closed right now. You can see the menu, ordering opens when it is back.</div>}
       </div>
 
@@ -60,17 +73,7 @@ export default function RestaurantPage({ id, nav }) {
       {!groups.length && <p className="muted center pad">No dishes found</p>}
       <p className="kcal-note"><Icon name="info" size={14} /> Calories are approximate, per serving shown. Eat mindfully.</p>
 
-      <Sheet open={!!view} onClose={() => setView(null)} title={view?.name || ''}>
-        {view && (
-          <div className="item-view">
-            <Img src={view.img} alt="" className="iv-img" />
-            <div className="row between"><span><VegMark /> <b>{rupee(view.price)}</b> · <span className="muted">{view.qty}</span></span>
-              {config.showCalories && view.kcal > 0 && <span className="kcal big"><Icon name="fire" size={14} /> {`~${view.kcal} kcal`}</span>}</div>
-            <p className="muted">{view.desc}</p>
-            <ItemAdd it={view} rest={rest} />
-          </div>
-        )}
-      </Sheet>
+      {view && <DishView it={view} rest={rest} showKcal={config.showCalories} onClose={() => setView(null)} />}
     </div>
   );
 }

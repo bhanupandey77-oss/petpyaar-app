@@ -121,6 +121,7 @@ export function TrackOrder({ id, fresh, nav }) {
           {o.items.map((x) => (
             <div key={x.id} className="bill"><span><VegMark size={11} /> {x.name} × {x.qty}</span><span>{rupee(x.price * x.qty)}</span></div>
           ))}
+          {o.discount > 0 && <div className="bill t-green"><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span className="t-green">{o.deliveryFee ? rupee(o.deliveryFee) : 'FREE'}</span></div>
           <div className="bill total"><span>{o.payment === 'cod' ? 'To pay in cash' : o.payment === 'upi_rider' ? 'To pay by UPI on delivery' : 'Paid by UPI'}</span><span>{rupee(o.total)}</span></div>
           {o.kcal > 0 && <p className="tiny muted"><Icon name="fire" size={12} /> {`About ${o.kcal} kcal`}</p>}

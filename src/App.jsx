@@ -5,6 +5,8 @@ import { SUPER_ADMIN } from './firebase-config.js';
 import { DEFAULT_CONFIG } from './data/menu.js';
 import { ToastProvider, Logo, Wordmark, Icon } from './ui.jsx';
 import Login from './Login.jsx';
+import { FoodOrbit, FloatingVeggies } from './components/Motion.jsx';
+import { photo } from './data/photos.js';
 import CustomerApp from './customer/CustomerApp.jsx';
 import RestaurantApp from './restaurant/RestaurantApp.jsx';
 import RiderApp from './rider/RiderApp.jsx';
@@ -29,7 +31,7 @@ export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [splash, setSplash] = useState(true);
 
-  useEffect(() => { const t = setTimeout(() => setSplash(false), 1400); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => setSplash(false), 2200); return () => clearTimeout(t); }, []);
   useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); if (u) setLoginOpen(false); }), []);
   useEffect(() => watchDoc('config', 'app', (d) => d && setConfig({ ...DEFAULT_CONFIG, ...d })), []);
   const phone = user?.phoneNumber || '';
@@ -75,7 +77,8 @@ function Splash() {
   return (
     <div className="splash">
       <div className="splash-glow" />
-      <Logo size={96} animate />
+      <FloatingVeggies count={12} seed={5} />
+      <FoodOrbit photos={['jalebi', 'chole_bhature', 'mango_lassi', 'idli', 'chowmein', 'rasmalai', 'pizza'].map(photo)} size={250}><Logo size={92} animate /></FoodOrbit>
       <Wordmark size={40} />
       <p>Pure veg · Pure pyaar</p>
       <div className="splash-dots"><i /><i /><i /></div>

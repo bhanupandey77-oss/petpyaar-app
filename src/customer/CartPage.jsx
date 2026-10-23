@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { Sheet } from '../ui.jsx';
+import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '../lib/offers.js';
+import { LS } from '../lib/utils.js';
 import { Icon, VegMark, Stepper, Empty, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
 import { useCart, cartTotals, cartStore, useRestaurants, placeOrder } from '../lib/data.js';
@@ -22,6 +25,23 @@ export default function CartPage({ nav, onPlaced }) {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(false);
   const fee = Number(config.customerDeliveryFee || 0);
+  const offers = forRestaurant(useOffers(), cart.restaurantId);
+  const [code, setCode] = useState(() => LS.get('pp_coupon', ''));
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [yay, setYay] = useState(0);
+  const applied = offers.find((o) => o.code === code);
+  const discount = applied ? discountFor(applied, total) : 0;
+  const best = offers.map((o) => ({ o, d: discountFor(o, total) })).filter((x) => x.d > 0).sort((a, b) => b.d - a.d)[0];
+  const apply = (c) => {
+    const o = offers.find((x) => x.code === String(c).trim().toUpperCase());
+    if (!o) { toast(t('This coupon is not valid here'), 'err'); return; }
+    const d = discountFor(o, total);
+    if (!d) { toast(t('Add items worth {} more to use this coupon').replace('{}', rupee(Number(o.minOrder || 0) - total)), 'err'); return; }
+    setCode(o.code); LS.set('pp_coupon', o.code); setCouponOpen(false); setYay(d);
+    setTimeout(() => setYay(0), 2200);
+  };
+  const removeCoupon = () => { setCode(''); LS.set('pp_coupon', ''); };
 
   if (!list.length) return (
     <div className="page"><TopBar onBack={nav.back} title="Cart" />
@@ -38,12 +58,13 @@ export default function CartPage({ nav, onPlaced }) {
     try {
       const id = await placeOrder({
         user, customerName: user.displayName || addr.name, rest, config, cartData: cart, note, payment: pay,
+        offer: discount ? applied : null, discount,
         address: { label: addr.label, name: addr.name, phone: addr.phone, line: addrLine(addr), lat: addr.lat || null, lng: addr.lng || null },
       });
       if (pay === 'upi_now' && config.upiId) {
-        await upiPay(upiLink({ upiId: config.upiId, upiName: config.upiName, amount: total + fee, note: `PetPyaar order`, ref: id }), '');
+        await upiPay(upiLink({ upiId: config.upiId, upiName: config.upiName, amount: total - discount + fee, note: `PetPyaar order`, ref: id }), '');
       }
-      cartStore.clear();
+      cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
     } catch (e) { console.warn(e); toast(t('Could not place the order. Check internet and try again.'), 'err'); }
     setBusy(false);
@@ -73,11 +94,29 @@ export default function CartPage({ nav, onPlaced }) {
           </div>
         )}
 
+        <div className="card coupon-card">
+          {applied && discount > 0 ? (
+            <div className="row gap">
+              <span className="cc-ic ok"><Icon name="check" size={18} stroke={3} /></span>
+              <div className="grow"><b data-notr="">{applied.code}</b><small className="t-green">{`You save ${rupee(discount)}`}</small></div>
+              <button className="link small" onClick={removeCoupon}>Remove</button>
+            </div>
+          ) : (
+            <button className="row gap cc-btn" onClick={() => setCouponOpen(true)}>
+              <span className="cc-ic"><Icon name="star" size={18} /></span>
+              <div className="grow"><b>Apply coupon</b>{best ? <small className="t-green">{`Save ${rupee(best.d)} with ${best.o.code}`}</small> : <small className="muted">{offers.length ? `${offers.length} offers available` : 'No offers right now'}</small>}</div>
+              <Icon name="right" size={18} />
+            </button>
+          )}
+        </div>
+
         <div className="card">
           <h4>Bill details</h4>
           <div className="bill"><span>Item total</span><span>{rupee(total)}</span></div>
           <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <><s className="muted">₹30</s> <b className="t-green">FREE</b></>}</span></div>
-          <div className="bill total"><span>To pay</span><span>{rupee(total + fee)}</span></div>
+          {discount > 0 && <div className="bill t-green"><span>{`Coupon (${applied.code})`}</span><span>− {rupee(discount)}</span></div>}
+          <div className="bill total"><span>To pay</span><span>{rupee(total - discount + fee)}</span></div>
+          {discount > 0 && <div className="saved-strip">{`🎉 You saved ${rupee(discount + 30)} on this order`}</div>}
         </div>
 
         <div className="card">
@@ -97,10 +136,38 @@ export default function CartPage({ nav, onPlaced }) {
       </div>
 
       <div className="place-bar">
-        <div><b>{rupee(total + fee)}</b><small>TOTAL</small></div>
+        <div><b>{rupee(total - discount + fee)}</b><small>TOTAL</small></div>
         <button className="btn primary lg grow" disabled={busy} onClick={place}>{busy ? 'Placing…' : !user ? 'Log in to order' : !addr ? 'Add address' : 'Place order'}</button>
       </div>
       <AddressForm open={form} onClose={() => setForm(false)} />
+      <Sheet open={couponOpen} onClose={() => setCouponOpen(false)} title="Coupons for you">
+        <div className="row gap">
+          <input className="input grow" placeholder="Enter coupon code" value={typed} onChange={(e) => setTyped(e.target.value.toUpperCase())} />
+          <button className="btn primary" onClick={() => apply(typed)} disabled={!typed}>Apply</button>
+        </div>
+        {offers.map((o) => {
+          const d = discountFor(o, total);
+          return (
+            <div key={o.id} className="coupon-ticket" style={{ '--c': o.color || '#e8461a' }}>
+              <div className="ct-left"><span>{offerLabel(o)}</span></div>
+              <div className="ct-body">
+                <b data-notr="">{o.code}</b>
+                <p>{o.title}</p>
+                <small className="muted">{offerTerms(o)}</small>
+                {d > 0 ? <small className="t-green">{`You save ${rupee(d)}`}</small> : <small className="t-red">{`Add ${rupee(Number(o.minOrder || 0) - total)} more to unlock`}</small>}
+              </div>
+              <button className="link" disabled={!d} onClick={() => apply(o.code)}>APPLY</button>
+            </div>
+          );
+        })}
+        {!offers.length && <p className="muted center">No offers right now</p>}
+      </Sheet>
+      {yay > 0 && (
+        <div className="yay" onClick={() => setYay(0)}>
+          <div className="confetti">{Array.from({ length: 28 }).map((_, i) => <i key={i} style={{ left: (i * 37) % 100 + '%', animationDelay: (i % 7) * 0.06 + 's', background: ['#e8461a', '#ffb627', '#1e9e55', '#ff7ab6', '#3d8bfd'][i % 5] }} />)}</div>
+          <div className="yay-card"><span className="yay-emoji">🎉</span><b>{`${rupee(yay)} saved!`}</b><small>{`with ${code}`}</small></div>
+        </div>
+      )}
     </div>
   );
 }

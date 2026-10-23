@@ -4,10 +4,11 @@ import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useItems, useList, ACTIVE } from '../lib/data.js';
 import { put, patch, remove, bulk, getList, watchList } from '../lib/fb.js';
 import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDateTime } from '../lib/utils.js';
-import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF } from '../data/menu.js';
+import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS } from '../data/menu.js';
 import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantApp.jsx';
 import MenuManager from '../restaurant/MenuManager.jsx';
 import MapView from '../components/MapView.jsx';
+import Promos from './Promos.jsx';
 import { t } from '../i18n/index.js';
 
 export default function AdminApp() {
@@ -33,6 +34,7 @@ export default function AdminApp() {
         {tab === 'orders' && <LiveOrders orders={orders} />}
         {tab === 'rest' && <Restaurants />}
         {tab === 'riders' && <Riders />}
+        {tab === 'offers' && <Promos />}
         {tab === 'settings' && <Settings />}
       </div>
       <BottomNav value={tab} onChange={setTab} tabs={[
@@ -40,6 +42,7 @@ export default function AdminApp() {
         { id: 'orders', icon: 'receipt', label: 'Orders', badge: newCount },
         { id: 'rest', icon: 'store', label: 'Restaurants' },
         { id: 'riders', icon: 'bike', label: 'Riders' },
+        { id: 'offers', icon: 'star', label: 'Offers' },
         { id: 'settings', icon: 'gear', label: 'Settings' },
       ]} />
     </div>
@@ -62,6 +65,7 @@ function Dashboard({ orders, go }) {
         <div className="mg"><small>Food sales</small><b>{rupee(sum(del, 'itemTotal'))}</b></div>
         <div className="mg"><small>Your commission</small><b className="t-green">{rupee(sum(del, 'commission'))}</b></div>
         <div className="mg"><small>Delivery charges</small><b>{rupee(sum(del, 'restDelivery'))}</b></div>
+        <div className="mg"><small>Discounts you gave</small><b className="t-red">{rupee(del.filter((o) => o.discountBy === 'admin').reduce((a, o) => a + Number(o.discount || 0), 0))}</b></div>
         <div className="mg"><small>Cash with riders</small><b>{rupee(sum(del.filter((o) => o.payment === 'cod'), 'total'))}</b></div>
       </div>
       <div className="card">
@@ -100,7 +104,7 @@ function Reports() {
   const rows = rests.map((r) => {
     const l = del.filter((o) => o.restaurantId === r.id);
     const s = (k) => l.reduce((a, o) => a + Number(o[k] || 0), 0);
-    return { r, n: l.length, sales: s('itemTotal'), com: s('commission'), dc: s('restDelivery'), pay: s('payable') };
+    return { r, n: l.length, sales: s('itemTotal'), disc: s('discount'), com: s('commission'), dc: s('restDelivery'), pay: s('payable') };
   });
   return (
     <div className="card">
@@ -109,8 +113,8 @@ function Reports() {
       {!orders ? <p className="muted small">Loading…</p> : (
         <div className="table-wrap">
           <table className="tbl">
-            <thead><tr><th>Restaurant</th><th>Orders</th><th>Sales</th><th>Fee</th><th>Delivery</th><th>Pay to shop</th></tr></thead>
-            <tbody>{rows.map((x) => <tr key={x.r.id}><td data-notr="">{x.r.name}</td><td>{x.n}</td><td>{rupee(x.sales)}</td><td>{rupee(x.com)}</td><td>{rupee(x.dc)}</td><td><b>{rupee(x.pay)}</b></td></tr>)}</tbody>
+            <thead><tr><th>Restaurant</th><th>Orders</th><th>Sales</th><th>Discount</th><th>Fee</th><th>Delivery</th><th>Pay to shop</th></tr></thead>
+            <tbody>{rows.map((x) => <tr key={x.r.id}><td data-notr="">{x.r.name}</td><td>{x.n}</td><td>{rupee(x.sales)}</td><td>{rupee(x.disc)}</td><td>{rupee(x.com)}</td><td>{rupee(x.dc)}</td><td><b>{rupee(x.pay)}</b></td></tr>)}</tbody>
           </table>
         </div>
       )}
@@ -293,15 +297,18 @@ function SeedCard({ small }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [ask, setAsk] = useState(false);
+  const { config } = useApp();
+  const cfgEmpty = !config.riders;
   const run = async () => {
     setBusy(true);
     try {
       const riders = STAFF.filter((s) => s.rider).map((s) => ({ phone: s.phone, name: s.name }));
       await bulk([
-        ['set', 'config', 'app', { ...DEFAULT_CONFIG, riders }],
+        ['set', 'config', 'app', { riders, ...(cfgEmpty ? DEFAULT_CONFIG : {}) }],
         ...RESTAURANTS.map((r) => ['set', 'restaurants', r.id, r]),
         ...ITEMS.map((i) => ['set', 'items', i.id, i]),
         ...BANNERS.map((b) => ['set', 'banners', b.id, b]),
+        ...OFFERS.map((o) => ['set', 'offers', o.id, o]),
         ...STAFF.map(({ phone, ...s }) => ['set', 'staff', phone, s]),
       ]);
       toast(t('Starter menu loaded'));
@@ -311,7 +318,7 @@ function SeedCard({ small }) {
   return (
     <div className={'card' + (small ? '' : ' seed')}>
       <h4>Starter menu</h4>
-      <p className="small muted">{`Loads ${RESTAURANTS.length} restaurants (Raju Lassi + 3 demo), ${ITEMS.length} veg dishes with photos & calories, banners, Rohit as rider. Existing dishes with the same id are updated.`}</p>
+      <p className="small muted">{`Loads ${RESTAURANTS.length} restaurants (Raju Lassi + ${RESTAURANTS.length - 1} demo), ${ITEMS.length} veg dishes with photos & calories, banners, Rohit as rider. Existing dishes with the same id are updated.`}</p>
       <button className="btn ghost block" disabled={busy} onClick={() => setAsk(true)}>{busy ? 'Loading…' : 'Load starter menu'}</button>
       <Confirm open={ask} onClose={() => setAsk(false)} title="Load starter menu?" text="This adds/updates the starter restaurants and dishes." okText="Load" onOk={run} />
     </div>

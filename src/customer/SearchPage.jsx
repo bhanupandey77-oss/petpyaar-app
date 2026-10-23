@@ -6,6 +6,7 @@ import { CATEGORIES } from '../data/menu.js';
 import { MenuItem, TopBar } from './RestaurantPage.jsx';
 import { RestCard } from './Home.jsx';
 import { tr } from '../i18n/index.js';
+import DishView from '../components/DishView.jsx';
 
 export default function SearchPage({ nav, cat: cat0, stacked }) {
   const { config } = useApp();
@@ -13,6 +14,7 @@ export default function SearchPage({ nav, cat: cat0, stacked }) {
   const items = useItems() || [];
   const [q, setQ] = useState('');
   const [cat, setCat] = useState(cat0 || '');
+  const [view, setView] = useState(null);
   const ql = q.trim().toLowerCase();
   const match = (s) => String(s || '').toLowerCase().includes(ql) || tr(String(s || '')).toLowerCase().includes(ql);
   const res = items.filter((i) => (!cat || i.cat === cat) && (!ql || match(i.name) || match(i.desc)));
@@ -36,12 +38,13 @@ export default function SearchPage({ nav, cat: cat0, stacked }) {
           return (
             <div key={it.id} className="search-hit">
               <button className="sh-rest" onClick={() => nav.openRest(it.restaurantId)}><span data-notr="">{r?.name}</span> <Icon name="right" size={14} /></button>
-              <MenuItem it={it} rest={r} showKcal={config.showCalories} onView={() => nav.openRest(it.restaurantId)} />
+              <MenuItem it={it} rest={r} showKcal={config.showCalories} onView={() => setView(it)} />
             </div>
           );
         })}
         {!res.length && !rres.length && <p className="muted center pad">Nothing found. Try another word.</p>}
       </div>
+      {view && <DishView it={view} rest={rests.find((r) => r.id === view.restaurantId)} showKcal={config.showCalories} onClose={() => setView(null)} />}
     </div>
   );
 }

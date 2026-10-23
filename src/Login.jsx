@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { sendOtp, updateProfile, auth, put, serverTimestamp } from './lib/fb.js';
 import { Logo, Wordmark, Icon, useToast } from './ui.jsx';
 import { t } from './i18n/index.js';
+import { FoodOrbit, FloatingVeggies } from './components/Motion.jsx';
+import { photo } from './data/photos.js';
+
+const ORBIT = ['gulab_jamun', 'pbm', 'momos', 'lassi', 'masala_dosa', 'pani_puri', 'sundae'].map(photo);
 
 const errText = (e) => {
   const c = e?.code || '';
@@ -65,8 +69,13 @@ export default function Login({ onClose }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
+        <FloatingVeggies count={8} seed={7} className="login-veg" />
         {onClose && step !== 'name' && <button className="icon-btn login-x" onClick={onClose} aria-label="Close"><Icon name="x" /></button>}
-        <div className="login-brand"><Logo size={64} animate /><Wordmark size={34} /><p>Hot food from your town's best pure-veg kitchens</p></div>
+        <div className="login-brand">
+          <FoodOrbit photos={ORBIT} size={210}><Logo size={70} animate /></FoodOrbit>
+          <Wordmark size={34} />
+          <p className="lb-tag">Hot food from your town's best pure-veg kitchens</p>
+        </div>
 
         {step === 'phone' && (
           <form onSubmit={send} className="login-form">
