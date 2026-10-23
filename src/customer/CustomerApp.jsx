@@ -32,7 +32,7 @@ export default function CustomerApp() {
 
   let page;
   if (top?.name === 'rest') page = <RestaurantPage id={top.id} nav={nav} />;
-  else if (top?.name === 'cart') page = <CartPage nav={nav} onPlaced={(id) => { setStack([{ name: 'track', id, fresh: true }]); }} />;
+  else if (top?.name === 'cart') page = <CartPage nav={nav} onPlaced={(id) => { setStack([{ name: 'track', id, fresh: true }]); window.scrollTo(0, 0); }} />;
   else if (top?.name === 'search') page = <SearchPage nav={nav} cat={top.cat} stacked />;
   else if (top?.name === 'address') page = <AddressPage nav={nav} />;
   else if (top?.name === 'track') page = <TrackOrder id={top.id} fresh={top.fresh} nav={nav} />;

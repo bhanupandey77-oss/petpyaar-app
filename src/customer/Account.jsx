@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Icon, LangSwitch, Sheet, Logo, Wordmark } from '../ui.jsx';
+import { Icon, LangSwitch, Sheet, Logo, Wordmark, useToast } from '../ui.jsx';
+import { auth, updateProfile, put } from '../lib/fb.js';
+import { t } from '../i18n/index.js';
 import { useApp, ROLE_INFO } from '../App.jsx';
 import { tel, plain } from '../lib/utils.js';
 import { PHOTOS } from '../data/photos.js';
@@ -8,6 +10,13 @@ export default function Account() {
   const { user, config, roles, setRole, logout, askLogin } = useApp();
   const [credits, setCredits] = useState(false);
   const [about, setAbout] = useState(false);
+  const [nameOpen, setNameOpen] = useState(false);
+  const [name, setName] = useState('');
+  const toast = useToast();
+  const saveName = async () => {
+    const n = name.trim(); if (n.length < 2) return;
+    try { await updateProfile(auth.currentUser, { displayName: n }); await put('customers', user.uid, { name: n, phone: user.phoneNumber }); location.reload(); } catch { toast(t('Could not save'), 'err'); }
+  };
   return (
     <div className="page account">
       <div className="acc-head">
@@ -16,6 +25,7 @@ export default function Account() {
           {user ? <><b data-notr="">{user.displayName || 'Hello!'}</b><small>{plain(user.phoneNumber)}</small></> : <><b>Welcome!</b><small>Log in to order and track food</small></>}
         </div>
         {!user && <button className="btn light small" onClick={askLogin}>Log in</button>}
+        {user && <button className="icon-btn light" onClick={() => { setName(user.displayName || ''); setNameOpen(true); }} aria-label="Edit name"><Icon name="edit" size={20} /></button>}
       </div>
       <div className="pad-x">
         <div className="card">
@@ -39,6 +49,10 @@ export default function Account() {
         <p className="center tiny muted">PetPyaar v1.0 · <span data-notr="">Pandey Techno</span></p>
       </div>
 
+      <Sheet open={nameOpen} onClose={() => setNameOpen(false)} title="Your name">
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} autoFocus />
+        <button className="btn primary block" onClick={saveName}>Save</button>
+      </Sheet>
       <Sheet open={about} onClose={() => setAbout(false)} title="About PetPyaar">
         <div className="center"><Logo size={64} /><br /><Wordmark size={30} /></div>
         <p>PetPyaar brings hot, fresh, 100% vegetarian food from your town's favourite kitchens to your door — with free delivery.</p>
