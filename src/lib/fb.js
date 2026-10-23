@@ -29,23 +29,28 @@ let verifier = null;
 let FA = null;
 const fa = async () => (FA = FA || (await import('@capacitor-firebase/authentication')).FirebaseAuthentication);
 
-export async function sendOtp(phone10, containerId) {
-  const phone = '+91' + phone10;
-  if (NATIVE) {
-    const F = await fa();
-    await F.removeAllListeners();
-    return new Promise((resolve, reject) => {
-      let vid = null;
-      const done = { confirm: (code) => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code)) };
-      F.addListener('phoneCodeSent', (e) => { vid = e.verificationId; resolve(done); });
-      F.addListener('phoneVerificationFailed', (e) => reject(Object.assign(new Error(e.message || 'failed'), { code: e.code || 'auth/native-failed' })));
-      F.addListener('phoneVerificationCompleted', async (e) => {
-        // SMS read automatically on this phone — finish login without typing
-        if (vid && e.verificationCode) { try { await done.confirm(e.verificationCode); } catch { /* user can still type */ } }
-      });
-      F.signInWithPhoneNumber({ phoneNumber: phone }).catch((e) => reject(e));
+// native (Android) phone OTP; resolves with { confirm } or rejects; gives up after `ms`
+function nativeOtp(F, phone, ms) {
+  return new Promise((resolve, reject) => {
+    let vid = null; let autoCode = null; let over = false;
+    const finish = (fn, v) => { if (over) return; over = true; clearTimeout(timer); fn(v); };
+    const done = {
+      native: true,
+      confirm: (code) => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code || autoCode)),
+      get autoCode() { return autoCode; },
+    };
+    const timer = setTimeout(() => finish(reject, Object.assign(new Error('native timeout'), { code: 'auth/native-timeout' })), ms);
+    F.addListener('phoneCodeSent', (e) => { vid = e.verificationId; finish(resolve, done); });
+    F.addListener('phoneVerificationFailed', (e) => finish(reject, Object.assign(new Error(e.message || 'failed'), { code: e.code || 'auth/native-failed' })));
+    F.addListener('phoneVerificationCompleted', (e) => {
+      // SMS was read automatically — remember the code so the OTP box can fill itself
+      if (e.verificationCode) { autoCode = e.verificationCode; window.dispatchEvent(new CustomEvent('pp-otp', { detail: autoCode })); }
     });
-  }
+    F.signInWithPhoneNumber({ phoneNumber: phone, timeout: 60 }).catch((e) => finish(reject, e));
+  });
+}
+
+async function webOtp(phone, containerId) {
   if (!verifier) {
     // fresh element every time — reCAPTCHA cannot render twice into the same node
     const host = document.getElementById(containerId);
@@ -60,6 +65,24 @@ export async function sendOtp(phone10, containerId) {
     verifier = null;
     throw e;
   }
+}
+
+export async function sendOtp(phone10, containerId) {
+  const phone = '+91' + phone10;
+  if (NATIVE) {
+    let F = null;
+    try {
+      F = await fa();
+      await F.removeAllListeners();
+      return await nativeOtp(F, phone, 25000);
+    } catch (e) {
+      console.warn('native OTP failed, trying web', e);
+      try { await F?.removeAllListeners(); } catch { /* ignore */ }
+      // fall back to the web method inside the app
+      try { return await webOtp(phone, containerId); } catch (e2) { e2.nativeCode = e?.code; throw e2; }
+    }
+  }
+  return webOtp(phone, containerId);
 }
 
 /* ---------- Google ---------- */

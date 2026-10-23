@@ -34,6 +34,11 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
 
   useEffect(() => { if (left <= 0) return; const x = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(x); }, [left]);
   useEffect(() => { if (step === 'otp') setTimeout(() => otpRef.current?.focus(), 200); }, [step]);
+  // Android may read the SMS by itself — fill the box and log in
+  useEffect(() => {
+    const h = (e) => { const c = String(e.detail || ''); if (c.length === 6) { setOtp(c); setTimeout(() => document.getElementById('otp-go')?.click(), 300); } };
+    window.addEventListener('pp-otp', h); return () => window.removeEventListener('pp-otp', h);
+  }, []);
 
   const send = async (e) => {
     e?.preventDefault();
@@ -43,7 +48,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
       conf.current = await sendOtp(phone, 'recaptcha-box');
       setStep('otp'); setLeft(30);
       toast(t('OTP sent to +91 {}').replace('{}', phone));
-    } catch (er) { console.warn(er); toast(`${t(errText(er))} (${er?.code || er?.message || ''})`, 'err'); }
+    } catch (er) { console.warn(er); toast(`${t(errText(er))} (${er?.code || er?.message || ''}${er?.nativeCode ? ' / ' + er.nativeCode : ''})`, 'err'); }
     setBusy(false);
   };
   const google = async () => {
@@ -65,7 +70,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
       const r = await conf.current.confirm(otp);
       if (!r.user.displayName) { setStep('name'); setBusy(false); return; }
       onClose?.(); location.reload();
-    } catch (er) { toast(t(errText(er)), 'err'); setBusy(false); }
+    } catch (er) { toast(`${t(errText(er))} (${er?.code || ''})`, 'err'); setBusy(false); }
   };
   const saveName = async (e) => {
     e?.preventDefault();
@@ -121,7 +126,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
             <p className="muted small">{`Sent to +91 ${phone}`} · <button type="button" className="link" onClick={() => { setStep('phone'); setOtp(''); }}>Change</button></p>
             <input ref={otpRef} className="otp-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} placeholder="••••••"
               onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setOtp(v); }} />
-            <button className="btn primary block lg" disabled={busy || otp.length !== 6}>{busy ? 'Checking…' : 'Verify & continue'}</button>
+            <button id="otp-go" className="btn primary block lg" disabled={busy || otp.length !== 6}>{busy ? 'Checking…' : 'Verify & continue'}</button>
             <p className="small center">
               {left > 0 ? <span className="muted">{`Resend OTP in ${left}s`}</span> : <button type="button" className="link" onClick={send}>Resend OTP</button>}
             </p>
