@@ -8,6 +8,7 @@ const errText = (e) => {
   if (c.includes('invalid-verification-code')) return 'Wrong OTP. Please check and try again.';
   if (c.includes('code-expired')) return 'OTP expired. Please request a new one.';
   if (c.includes('too-many-requests') || c.includes('quota')) return 'Too many attempts. Please try again after some time.';
+  if (c.includes('operation-not-allowed')) return 'SMS login is not enabled yet. Please try again later.';
   if (c.includes('invalid-phone')) return 'Enter a valid 10-digit mobile number';
   if (c.includes('network')) return 'Network problem. Please try again.';
   return 'Could not send OTP. Please try again.';

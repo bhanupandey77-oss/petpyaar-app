@@ -22,7 +22,13 @@ export { onAuthStateChanged, signOut, updateProfile, serverTimestamp, increment 
 /* ---------- phone OTP ---------- */
 let verifier = null;
 export async function sendOtp(phone10, containerId) {
-  if (!verifier) verifier = new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
+  if (!verifier) {
+    // fresh element every time — reCAPTCHA cannot render twice into the same node
+    const host = document.getElementById(containerId);
+    const el = document.createElement('div');
+    if (host) { host.innerHTML = ''; host.appendChild(el); }
+    verifier = new RecaptchaVerifier(auth, el, { size: 'invisible' });
+  }
   try {
     return await signInWithPhoneNumber(auth, '+91' + phone10, verifier);
   } catch (e) {
