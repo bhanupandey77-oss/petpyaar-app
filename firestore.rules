@@ -1,13 +1,63 @@
 rules_version = '2';
-// ज्ञानगाँव लाइब्रेरी — Firestore नियम
-// ऐप में मॉक OTP है, इसलिए हर फ़ोन अनाम (anonymous) लॉगिन से जुड़ता है।
 service cloud.firestore {
-  match /databases/{db}/documents {
+  match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    match /settings/{id}  { allow read, write: if signedIn(); }
-    match /students/{id}  { allow read, write: if signedIn(); }
-    match /payments/{id}  { allow read, create, update: if signedIn(); allow delete: if false; }
-    match /receipts/{id}  { allow read: if signedIn(); allow create, update: if signedIn() && request.resource.data.image.size() < 900000; allow delete: if false; }
-    match /messages/{id}  { allow read, write: if signedIn(); }
+    function ph() { return signedIn() && request.auth.token.phone_number != null ? request.auth.token.phone_number : 'none'; }
+    function staff() { return get(/databases/$(database)/documents/staff/$(ph())).data; }
+    function isStaff() { return signedIn() && exists(/databases/$(database)/documents/staff/$(ph())); }
+    function isSuper() { return ph() == '+919415213754'; }
+    function isAdmin() { return isSuper() || (isStaff() && staff().get('admin', false) == true); }
+    function isRider() { return isStaff() && staff().get('rider', false) == true; }
+    function ownsRest(rid) { return isStaff() && staff().get('restaurant', '') == rid; }
+
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /restaurants/{rid} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (ownsRest(rid)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commissionPct', 'deliveryCharge', 'rating', 'sort', 'demo']));
+    }
+    match /items/{id} {
+      allow read: if true;
+      allow create: if isAdmin() || ownsRest(request.resource.data.restaurantId);
+      allow update, delete: if isAdmin() || ownsRest(resource.data.restaurantId);
+    }
+    match /banners/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /staff/{phone} {
+      allow read: if phone == ph() || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /customers/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow read: if isAdmin();
+    }
+    match /orders/{id} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid
+                    && request.resource.data.status == 'placed';
+      allow read: if signedIn() && (
+                       resource.data.customerUid == request.auth.uid
+                    || isAdmin()
+                    || ownsRest(resource.data.restaurantId)
+                    || (isRider() && (resource.data.riderPhone == ph() || resource.data.riderPhone == '')));
+      allow update: if isAdmin()
+                    || ownsRest(resource.data.restaurantId)
+                    || (isRider() && (resource.data.riderPhone == ph()
+                         || (resource.data.riderPhone == '' && request.resource.data.riderPhone == ph())))
+                    || (signedIn() && resource.data.customerUid == request.auth.uid
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason'])
+                         && (request.resource.data.status == resource.data.status
+                             || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')));
+      allow delete: if isAdmin();
+    }
+    match /riderLoc/{phone} {
+      allow read: if signedIn();
+      allow write: if phone == ph() || isAdmin();
+    }
   }
 }
