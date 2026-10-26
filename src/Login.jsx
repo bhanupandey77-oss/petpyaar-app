@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { sendOtp, googleSignIn, updateProfile, auth, put, serverTimestamp, mockLogin, phoneOf, MOCK_OTP } from './lib/fb.js';
+import { sendOtp, googleSignIn, updateProfile, auth, put, getOne, serverTimestamp, mockLogin, phoneOf, MOCK_OTP } from './lib/fb.js';
 import { useApp } from './App.jsx';
 import { Logo, Wordmark, Icon, useToast } from './ui.jsx';
 import { t } from './i18n/index.js';
@@ -73,6 +73,11 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
     try {
       const r = mock ? await mockLogin(phone, otp) : await conf.current.confirm(otp);
       await put('customers', r.user.uid, { phone: phoneOf(r.user), lastLogin: serverTimestamp() }).catch(() => {});
+      // staff (restaurant / delivery / admin) already have a name — no name step for them
+      if (!r.user.displayName) {
+        const st = await getOne('staff', phoneOf(r.user)).catch(() => null);
+        if (st?.name) { await updateProfile(r.user, { displayName: st.name }).catch(() => {}); onClose?.(); location.reload(); return; }
+      }
       if (!r.user.displayName) { setStep('name'); setBusy(false); return; }
       onClose?.(); location.reload();
     } catch (er) { toast(`${t(errText(er))} (${er?.code || ''})`, 'err'); setBusy(false); }

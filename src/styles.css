@@ -674,12 +674,12 @@ textarea.input { resize: vertical; }
 .bill-card .bill.total { border-top: 1px dashed var(--line); padding-top: 8px; }
 /* ---- documents (bill / statement / report) ---- */
 .doc-scroll { overflow-x: auto; margin: 0 -4px 12px; }
-.doc { background: #fff; color: #222; width: 560px; max-width: none; padding: 22px; border-radius: 12px; border: 1px solid #eee; font-family: 'Mukta', 'Poppins', sans-serif; margin: 0 auto; }
+.doc { background: #fff; color: #222; width: 100%; max-width: 560px; padding: 22px; border-radius: 12px; border: 1px solid #eee; font-family: 'Mukta', 'Poppins', sans-serif; margin: 0 auto; }
 .invoice { font-size: 12.5px; line-height: 1.45; }
 .doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--brand); padding-bottom: 10px; margin-bottom: 12px; }
 .doc-firm { font-size: 11px; color: #666; font-weight: 600; }
 .doc-title { text-align: right; } .doc-title b { display: block; font-size: 15px; color: var(--brand); } .doc-title small { color: #666; }
-.doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 12px; }
+.doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 16px; margin-bottom: 12px; }
 .doc-grid > div { display: flex; flex-direction: column; } .doc-grid small { color: #888; font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px; } .doc-grid span { color: #444; }
 .doc-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
 .doc-table th { background: #fff3ea; color: #7a2e0e; text-align: left; padding: 6px; font-size: 11.5px; }
@@ -735,3 +735,4 @@ textarea.input { resize: vertical; }
 .pr-word { font-family: 'Rozha One', 'Mukta', serif; font-size: 2.1rem; font-weight: 400; letter-spacing: .5px; background: linear-gradient(90deg, #fff, #ffe08a, #fff); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% auto; animation: shimmerTxt 3.5s linear infinite; }
 .pr-name { font-family: 'Mukta', var(--font); font-size: 1.15rem; font-weight: 700; }
 @keyframes shimmerTxt { to { background-position: 200% center; } }
+.ai-prog .grow small { margin-left: 8px; }

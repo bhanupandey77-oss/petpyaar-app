@@ -4,7 +4,11 @@ import { isNative } from './native.js';
 
 export async function elementToPdf(el, fileName = 'FoodGaon.pdf', title = 'FoodGaon') {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+  el.setAttribute('data-pdf-target', '1');
+  // always render at A4-friendly width, even on a small phone screen
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 640,
+    onclone: (d) => { const c = d.querySelector('[data-pdf-target]'); if (c) { c.style.width = '560px'; c.style.maxWidth = 'none'; } } });
+  el.removeAttribute('data-pdf-target');
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const pw = pdf.internal.pageSize.getWidth(); const ph = pdf.internal.pageSize.getHeight();
   const m = 8; const w = pw - m * 2;

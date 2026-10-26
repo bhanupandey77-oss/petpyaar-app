@@ -58,7 +58,7 @@ export function Invoice({ o, config }) {
         <div><span>{`CGST ${(o.gstPct || 5) / 2}%`}</span><span>{rupee(r2((o.gst || 0) / 2))}</span></div>
         <div><span>{`SGST ${(o.gstPct || 5) / 2}%`}</span><span>{rupee(r2((o.gst || 0) - r2((o.gst || 0) / 2)))}</span></div>
         <div><span>Delivery / डिलीवरी</span><span>{o.deliveryFee ? rupee(o.deliveryFee) : 'FREE'}</span></div>
-        <div className="grand"><span>Total paid / कुल भुगतान</span><span>{rupee(o.total)}</span></div>
+        <div className="grand"><span>Total / कुल राशि</span><span>{rupee(o.total)}</span></div>
       </div>
       <p className="doc-note">भुगतान सीधे रेस्टोरेंट को किया गया। इस बिल पर GST, FoodGaon (TechGaon AI Services) द्वारा सरकार को जमा किया जाता है। खाना ऑर्डर करने के लिए धन्यवाद! 🙏</p>
     </div>

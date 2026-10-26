@@ -29,7 +29,7 @@ export const todayKey = () => dayKey(Date.now());
 
 export const shortId = () => {
   const d = new Date();
-  return 'PP' + String(d.getDate()).padStart(2, '0') + String(d.getHours()).padStart(2, '0') + Math.random().toString(36).slice(2, 6).toUpperCase();
+  return 'FG' + String(d.getDate()).padStart(2, '0') + String(d.getHours()).padStart(2, '0') + Math.random().toString(36).slice(2, 6).toUpperCase();
 };
 
 /** distance in km between two {lat,lng} */

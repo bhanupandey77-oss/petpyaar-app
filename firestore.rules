@@ -5,8 +5,8 @@ service cloud.firestore {
     // phone of the user: real SMS login, or test login (91XXXXXXXXXX@login.foodgaon.app, OTP 1234 phase)
     function ph() {
       return !signedIn() ? 'none'
-        : request.auth.token.phone_number != null ? request.auth.token.phone_number
-        : (request.auth.token.email != null && request.auth.token.email.matches('^91[0-9]{10}@login[.]foodgaon[.]app$'))
+        : request.auth.token.get('phone_number', null) != null ? request.auth.token.phone_number
+        : request.auth.token.get('email', '').matches('^91[0-9]{10}@login[.]foodgaon[.]app$')
           ? '+' + request.auth.token.email.split('@')[0] : 'none';
     }
     function staff() { return get(/databases/$(database)/documents/staff/$(ph())).data; }
