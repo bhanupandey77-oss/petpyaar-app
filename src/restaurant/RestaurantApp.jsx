@@ -9,6 +9,7 @@ import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotif
 import { getPosition } from '../lib/native.js';
 import MenuManager from './MenuManager.jsx';
 import Team from './Team.jsx';
+import PhotoPick from '../components/PhotoPick.jsx';
 import { t, tr } from '../i18n/index.js';
 
 /* rings while there are un-accepted orders */
@@ -305,7 +306,9 @@ function ShopSettings({ rest }) {
   return (
     <div className="pad-x">
       <div className="card">
-        <div className="cover-edit"><Img src={rest.cover} alt="" /><label className="btn small light"><Icon name="image" size={16} /> Change photo<input type="file" accept="image/*" hidden onChange={cover} /></label></div>
+        <div className="cover-edit"><Img src={rest.cover} alt="" /></div>
+        <p className="tiny muted">Shop photo</p>
+        <PhotoPick maxSide={1000} maxLen={220000} onPick={(img) => save({ cover: img })} />
         <Field label="Short line about your food"><input className="input" value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} /></Field>
         <Field label="Address"><input className="input" value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
         <div className="row gap">

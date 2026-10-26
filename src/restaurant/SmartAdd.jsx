@@ -147,7 +147,13 @@ export default function SmartAdd({ open, onClose, restId }) {
           <div className="ai-hero"><span className="ai-spark">✨</span><div><b>Photo khinchiye, menu ban jayega</b><small>Take a photo of your menu card — FoodGaon reads dish names & prices and fills photos, calories and a Hindi line for each dish.</small></div></div>
           <div className="seg"><button className={mode === 'photo' ? 'on' : ''} onClick={() => setMode('photo')}>Menu photo</button><button className={mode === 'type' ? 'on' : ''} onClick={() => setMode('type')}>Type names</button></div>
           {mode === 'photo' ? (
-            <label className="ai-drop"><Icon name="image" size={34} /><b>Click / choose menu photo</b><small>Clear, straight photo in good light works best</small><input type="file" accept="image/*" capture="environment" hidden onChange={readPhoto} /></label>
+            <div className="ai-drop">
+              <Icon name="camera" size={34} /><b>Menu card photo</b><small>Clear, straight photo in good light works best</small>
+              <div className="row gap">
+                <label className="btn primary"><Icon name="camera" size={18} /> Camera<input type="file" accept="image/*" capture="environment" hidden onChange={readPhoto} /></label>
+                <label className="btn ghost"><Icon name="image" size={18} /> Gallery<input type="file" accept="image/*" hidden onChange={readPhoto} /></label>
+              </div>
+            </div>
           ) : (
             <>
               <textarea className="input" rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={'One dish per line, with price\nPaneer Butter Masala 180\nमसाला डोसा 100\nCold Coffee - 80'} />

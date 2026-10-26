@@ -3,6 +3,7 @@ import { Icon, Toggle, Empty, useToast, StatusChip, Logo, BottomNav, Confirm } f
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useList, setStatus, useRestaurants, useDoc } from '../lib/data.js';
 import { UpiQr, UpiEditor } from '../components/Pay.jsx';
+import PhotoPick from '../components/PhotoPick.jsx';
 import { Field, Sheet } from '../ui.jsx';
 import { compressImage, fmtDateTime } from '../lib/utils.js';
 import { put, patch } from '../lib/fb.js';
@@ -187,7 +188,7 @@ function RiderProfile({ phone, name, shop }) {
   const toast = useToast();
   const prof = useDoc('riders', phone);
   const [f, setF] = useState(null);
-  useEffect(() => { if (prof !== undefined && !f) setF({ name: prof?.name || name, vehicle: prof?.vehicle || '', address: prof?.address || '', photo: prof?.photo || '' }); }, [prof]); // eslint-disable-line
+  useEffect(() => { if (prof !== undefined && !f) setF({ name: prof?.name || name, vehicle: prof?.vehicle || '', vehicleType: prof?.vehicleType || 'bike', vehiclePhoto: prof?.vehiclePhoto || '', address: prof?.address || '', photo: prof?.photo || '' }); }, [prof]); // eslint-disable-line
   if (!f) return <div className="pad"><div className="skeleton" style={{ height: 140 }} /></div>;
   const save = async () => { try { await put('riders', phone, { ...f, phone, riderOf: shop?.id || '' }); toast(t('Saved')); } catch { toast(t('Could not save'), 'err'); } };
   const pic = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { setF({ ...f, photo: await compressImage(file, 400, 60000) }); } catch (er) { toast(t(er.message), 'err'); } };
@@ -195,11 +196,18 @@ function RiderProfile({ phone, name, shop }) {
     <div className="pad-x page-anim">
       <div className="card">
         <div className="row gap">
-          <label className="avatar big">{f.photo ? <img src={f.photo} alt="" /> : <Icon name="user" size={30} />}<input type="file" accept="image/*" capture="user" hidden onChange={pic} /></label>
-          <div className="grow"><b data-notr="">{f.name}</b><small className="muted">{plain(phone)}{shop ? ` · ${shop.name}` : ''}</small><small className="link">Tap photo to change</small></div>
+          <span className="avatar big">{f.photo ? <img src={f.photo} alt="" /> : <Icon name="user" size={30} />}</span>
+          <div className="grow"><b data-notr="">{f.name}</b><small className="muted">{plain(phone)}{shop ? ` · ${shop.name}` : ''}</small></div>
         </div>
+        <p className="tiny muted">Your photo — customers see it when you bring their food</p>
+        <PhotoPick facing="user" maxSide={500} maxLen={80000} onPick={(photo) => setF({ ...f, photo })} />
         <Field label="Name"><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-notr="" /></Field>
-        <Field label="Bike / scooter number"><input className="input" value={f.vehicle} onChange={(e) => setF({ ...f, vehicle: e.target.value.toUpperCase() })} placeholder="UP 41 AB 1234" data-notr="" /></Field>
+        <h4 style={{ marginTop: 14 }}><Icon name="bike" size={18} /> Your vehicle</h4>
+        <div className="seg">{[['bike', 'Bike'], ['scooter', 'Scooter'], ['cycle', 'Cycle']].map(([k, l]) => <button key={k} type="button" className={f.vehicleType === k ? 'on' : ''} onClick={() => setF({ ...f, vehicleType: k })}>{l}</button>)}</div>
+        {f.vehicleType !== 'cycle' && <Field label="Vehicle number"><input className="input" value={f.vehicle} onChange={(e) => setF({ ...f, vehicle: e.target.value.toUpperCase() })} placeholder="UP 41 AB 1234" data-notr="" /></Field>}
+        <div className="veh-photo">{f.vehiclePhoto ? <img src={f.vehiclePhoto} alt="" /> : <span className="qr-ph"><Icon name="bike" size={28} /><small>No photo</small></span>}</div>
+        <p className="tiny muted">Vehicle photo — helps the customer spot you</p>
+        <PhotoPick maxSide={700} maxLen={120000} onPick={(vehiclePhoto) => setF({ ...f, vehiclePhoto })} />
         <Field label="Address"><input className="input" value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} data-notr="" /></Field>
         <button className="btn primary block" onClick={save}>Save profile</button>
       </div>

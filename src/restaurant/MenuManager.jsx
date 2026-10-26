@@ -6,6 +6,7 @@ import { CATEGORIES } from '../data/menu.js';
 import { rupee, compressImage } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import SmartAdd from './SmartAdd.jsx';
+import PhotoPick from '../components/PhotoPick.jsx';
 
 export default function MenuManager({ restId }) {
   const items = (useItems() || []).filter((i) => i.restaurantId === restId);
@@ -54,15 +55,20 @@ function ItemEditor({ open, item, restId, onClose }) {
   const save = async () => {
     if (!f.name.trim() || !(Number(f.price) > 0)) { toast(t('Name and price are required'), 'err'); return; }
     setBusy(true);
-    const data = { restaurantId: restId, name: f.name.trim(), price: Number(f.price), kcal: Number(f.kcal) || 0, qty: f.qty.trim(), desc: f.desc.trim(), story: (f.story || '').trim(), cat: f.cat, img: f.img || '', bestseller: !!f.bestseller, veg: true, available: f.available !== false, sort: f.sort || 50 };
+    const data = { restaurantId: restId, name: f.name.trim(), price: Number(f.price), kcal: Number(f.kcal) || 0, qty: f.qty.trim(), desc: f.desc.trim(), story: (f.story || '').trim(), cat: f.cat, img: f.img || '', gallery: (f.gallery && f.gallery.length ? f.gallery : [f.img]).filter(Boolean), bestseller: !!f.bestseller, veg: true, available: f.available !== false, sort: f.sort || 50 };
     try { await put('items', item?.id || `${restId}--${Date.now().toString(36)}`, data); toast(t('Saved')); onClose(); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
   return (
     <Sheet open={open} onClose={onClose} title={isNew ? 'Add dish' : 'Edit dish'} full>
-      <div className="img-pick">
-        <Img src={f.img} alt="" />
-        <label className="btn small light"><Icon name="image" size={16} /> {f.img ? 'Change photo' : 'Add photo'}<input type="file" accept="image/*" hidden onChange={pick} /></label>
+      <div className="img-pick"><Img src={f.img} alt="" /></div>
+      <p className="tiny muted">{f.img ? 'Change main photo' : 'Add main photo'}</p>
+      <PhotoPick onPick={(img) => setF({ ...f, img, gallery: [img, ...(f.gallery || []).filter((g) => g !== f.img)].slice(0, 5) })} />
+      <div className="gal-edit">
+        {(f.gallery || []).filter((g) => g && g !== f.img).map((g) => (
+          <span key={g.slice(-40)} className="gal-th"><Img src={g} alt="" /><button type="button" aria-label="Remove" onClick={() => setF({ ...f, gallery: f.gallery.filter((x) => x !== g) })}><Icon name="x" size={14} /></button></span>
+        ))}
+        {(f.gallery || []).length < 5 && f.img && <div className="gal-add"><small className="muted">More photos</small><PhotoPick onPick={(img) => setF({ ...f, gallery: [...(f.gallery || [f.img]), img].slice(0, 5) })} /></div>}
       </div>
       <p className="tiny muted"><VegMark size={11} /> FoodGaon is 100% vegetarian — only veg dishes are allowed.</p>
       <Field label="Dish name"><input className="input" value={f.name} onChange={set('name')} /></Field>

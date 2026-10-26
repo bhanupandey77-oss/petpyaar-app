@@ -67,7 +67,8 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
           <p className="small"><b>QR code photo</b></p>
           <p className="tiny muted">Take a clear photo or screenshot of your shop's UPI QR (barcode) stand.</p>
           <div className="row gap wrap">
-            <label className="btn small ghost"><Icon name="image" size={16} /> {f.upiQr ? 'Change QR' : 'Upload QR'}<input type="file" accept="image/*" hidden onChange={pick} /></label>
+            <label className="btn small ghost"><Icon name="camera" size={16} /> Camera<input type="file" accept="image/*" capture="environment" hidden onChange={pick} /></label>
+            <label className="btn small ghost"><Icon name="image" size={16} /> Gallery<input type="file" accept="image/*" hidden onChange={pick} /></label>
             {f.upiQr && <button type="button" className="btn small ghost danger-text" onClick={() => setF({ ...f, upiQr: '' })}>Remove</button>}
           </div>
         </div>
