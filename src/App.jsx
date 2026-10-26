@@ -69,7 +69,9 @@ export default function App() {
     <Ctx.Provider value={value}>
       <ToastProvider>
         <div className="app-shell">{body}</div>
-        {loginOpen && !user && <Login onClose={() => setLoginOpen(false)} />}
+        {loginOpen && <Login onClose={() => setLoginOpen(false)} />}
+        {/* signed in but no name yet (new sign up / Google without name) → ask the name first */}
+        {!loginOpen && user && !splash && staffReady && !user.displayName && activeRole === 'customer' && <Login startStep="name" />}
       </ToastProvider>
     </Ctx.Provider>
   );
