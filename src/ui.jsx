@@ -19,6 +19,7 @@ const P = {
   back: 'M15 18 9 12l6-6',
   right: 'M9 18l6-6-6-6',
   down: 'M6 9l6 6 6-6',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   logout: 'M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9',
   clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-15v5l3 2',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
@@ -60,7 +61,7 @@ export function Icon({ name, size = 22, stroke = 2, className = '', style, fill 
 /* Brand mark: "पे" sits inside the bowl of a "P", with steam rising — पेट + Pyaar */
 export function Logo({ size = 44, animate = false }) {
   return (
-    <svg className={'logo' + (animate ? ' logo-anim' : '')} width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="PetPyaar logo">
+    <svg className={'logo' + (animate ? ' logo-anim' : '')} width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="FoodGaon logo">
       <defs>
         <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#ff8a1f" /><stop offset="1" stopColor="#e2361b" />
@@ -70,15 +71,16 @@ export function Logo({ size = 44, animate = false }) {
       <g className="steam" stroke="#ffd34d" strokeWidth="2.6" strokeLinecap="round" fill="none">
         <path d="M30 12c-2-2 2-4 0-6" /><path d="M37 12c-2-2 2-4 0-6" /><path d="M44 12c-2-2 2-4 0-6" />
       </g>
-      <rect x="15" y="16" width="9" height="38" rx="4.5" fill="#fff" />
-      <path d="M22 16h15a14 14 0 0 1 0 28H22z" fill="#fff" />
-      <text x="35.5" y="35.5" textAnchor="middle" fontFamily="'Baloo 2', 'Mukta', sans-serif" fontWeight="800" fontSize="17" fill="#e2361b">पे</text>
+      {/* plate + village hut roof + F */}
+      <circle cx="32" cy="37" r="19" fill="#fff" />
+      <path d="M19 30 L32 19 L45 30" fill="none" stroke="#ffd34d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="32" y="48" textAnchor="middle" fontFamily="'Baloo 2', 'Poppins', sans-serif" fontWeight="800" fontSize="22" fill="#e2361b">F</text>
       <circle cx="49" cy="51" r="4.2" fill="#1e9e55" stroke="#fff" strokeWidth="1.6" />
     </svg>
   );
 }
 export function Wordmark({ size = 26 }) {
-  return <span className="wordmark" style={{ fontSize: size }} data-notr=""><b>पेट</b><i>Pyaar</i></span>;
+  return <span className="wordmark" style={{ fontSize: size }} data-notr=""><b>FOOD</b><i>गाँव</i></span>;
 }
 
 export function VegMark({ size = 14 }) {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { sendOtp, googleSignIn, updateProfile, auth, put, serverTimestamp } from './lib/fb.js';
+import { sendOtp, googleSignIn, updateProfile, auth, put, serverTimestamp, mockLogin, phoneOf, MOCK_OTP } from './lib/fb.js';
+import { useApp } from './App.jsx';
 import { Logo, Wordmark, Icon, useToast } from './ui.jsx';
 import { t } from './i18n/index.js';
 import { FoodOrbit, FloatingVeggies } from './components/Motion.jsx';
@@ -22,6 +23,8 @@ const errText = (e) => {
 
 export default function Login({ onClose, startStep = 'phone', startMode = 'login' }) {
   const toast = useToast();
+  const { config } = useApp() || {};
+  const mock = (config?.otpMode || 'mock') !== 'real';
   const [step, setStep] = useState(startStep);
   const [mode, setMode] = useState(startMode);
   const [phone, setPhone] = useState('');
@@ -42,7 +45,8 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
 
   const send = async (e) => {
     e?.preventDefault();
-    if (!/^[6-9]\d{9}$/.test(phone)) { toast(t('Enter a valid 10-digit mobile number'), 'err'); return; }
+    if (!(mock ? /^\d{10}$/ : /^[6-9]\d{9}$/).test(phone)) { toast(t('Enter a valid 10-digit mobile number'), 'err'); return; }
+    if (mock) { setStep('otp'); setOtp(''); setLeft(0); return; }
     setBusy(true);
     try {
       conf.current = await sendOtp(phone, 'recaptcha-box');
@@ -64,10 +68,11 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
   };
   const verify = async (e) => {
     e?.preventDefault();
-    if (otp.length !== 6) return;
+    if (otp.length !== (mock ? 4 : 6)) return;
     setBusy(true);
     try {
-      const r = await conf.current.confirm(otp);
+      const r = mock ? await mockLogin(phone, otp) : await conf.current.confirm(otp);
+      await put('customers', r.user.uid, { phone: phoneOf(r.user), lastLogin: serverTimestamp() }).catch(() => {});
       if (!r.user.displayName) { setStep('name'); setBusy(false); return; }
       onClose?.(); location.reload();
     } catch (er) { toast(`${t(errText(er))} (${er?.code || ''})`, 'err'); setBusy(false); }
@@ -79,7 +84,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
     setBusy(true);
     try {
       await updateProfile(auth.currentUser, { displayName: n });
-      await put('customers', auth.currentUser.uid, { name: n, phone: auth.currentUser.phoneNumber, createdAt: serverTimestamp() });
+      await put('customers', auth.currentUser.uid, { name: n, phone: phoneOf(auth.currentUser), createdAt: serverTimestamp() });
     } catch (er) { console.warn(er); }
     onClose?.();
     location.reload();
@@ -94,7 +99,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
         <div className="login-brand">
           <FoodOrbit photos={ORBIT} size={210}><Logo size={70} animate /></FoodOrbit>
           <Wordmark size={34} />
-          <p className="lb-tag">Hot food from your town's best pure-veg kitchens</p>
+          <p className="lb-tag">Hot food from your town's best kitchens</p>
         </div>
 
         {step === 'phone' && (
@@ -123,13 +128,14 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
         {step === 'otp' && (
           <form onSubmit={verify} className="login-form">
             <h3>Enter OTP</h3>
-            <p className="muted small">{`Sent to +91 ${phone}`} · <button type="button" className="link" onClick={() => { setStep('phone'); setOtp(''); }}>Change</button></p>
-            <input ref={otpRef} className="otp-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} placeholder="••••••"
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setOtp(v); }} />
-            <button id="otp-go" className="btn primary block lg" disabled={busy || otp.length !== 6}>{busy ? 'Checking…' : 'Verify & continue'}</button>
-            <p className="small center">
+            <p className="muted small">{mock ? `+91 ${phone}` : `Sent to +91 ${phone}`} · <button type="button" className="link" onClick={() => { setStep('phone'); setOtp(''); }}>Change</button></p>
+            {mock && <div className="mock-otp"><Icon name="info" size={16} /> <span>Testing mode: enter OTP <b data-notr="">{MOCK_OTP}</b></span></div>}
+            <input ref={otpRef} className="otp-input" inputMode="numeric" autoComplete="one-time-code" maxLength={mock ? 4 : 6} value={otp} placeholder={mock ? '••••' : '••••••'}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, mock ? 4 : 6); setOtp(v); }} />
+            <button id="otp-go" className="btn primary block lg" disabled={busy || otp.length !== (mock ? 4 : 6)}>{busy ? 'Checking…' : 'Verify & continue'}</button>
+            {!mock && <p className="small center">
               {left > 0 ? <span className="muted">{`Resend OTP in ${left}s`}</span> : <button type="button" className="link" onClick={send}>Resend OTP</button>}
-            </p>
+            </p>}
           </form>
         )}
 

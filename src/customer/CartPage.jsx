@@ -5,8 +5,9 @@ import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '.
 import { LS } from '../lib/utils.js';
 import { Icon, VegMark, Stepper, Empty, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useCart, cartTotals, cartStore, useRestaurants, placeOrder } from '../lib/data.js';
-import { rupee, upiLink } from '../lib/utils.js';
+import { useCart, cartTotals, cartStore, useRestaurants, placeOrder, billFor } from '../lib/data.js';
+import NoteBox from './NoteBox.jsx';
+import { rupee, upiLink, km } from '../lib/utils.js';
 import { upiPay } from '../lib/native.js';
 import { TopBar } from './RestaurantPage.jsx';
 import { useAddresses, useSyncAddresses, addrLine, AddressForm } from './Address.jsx';
@@ -38,6 +39,11 @@ export default function CartPage({ nav, onPlaced }) {
   const [yay, setYay] = useState(0);
   const applied = offers.find((o) => o.code === code);
   const discount = applied ? discountFor(applied, total) : 0;
+  const bill = billFor({ itemTotal: total, discount, discountBy: applied?.fundedBy === 'restaurant' ? 'restaurant' : 'admin', rest: rest || {}, config });
+  const minOrder = Number(rest?.minOrder ?? config.minOrder ?? 0);
+  const radius = Number(rest?.radiusKm ?? config.radiusKm ?? 0);
+  const dist = addr?.lat && rest?.lat ? km({ lat: addr.lat, lng: addr.lng }, { lat: rest.lat, lng: rest.lng }) : null;
+  const far = radius > 0 && dist != null && dist > radius;
   const best = offers.map((o) => ({ o, d: discountFor(o, total) })).filter((x) => x.d > 0).sort((a, b) => b.d - a.d)[0];
   const apply = (c) => {
     const o = offers.find((x) => x.code === String(c).trim().toUpperCase());
@@ -59,7 +65,8 @@ export default function CartPage({ nav, onPlaced }) {
     if (!user) { askLogin(); return; }
     if (!addr) { setForm(true); return; }
     if (!rest || rest.open === false) { toast(t('Restaurant is closed right now'), 'err'); return; }
-    if (config.minOrder && total < config.minOrder) { toast(t('Minimum order is {}').replace('{}', rupee(config.minOrder)), 'err'); return; }
+    if (minOrder && total < minOrder) { toast(t('Minimum order is {}').replace('{}', rupee(minOrder)), 'err'); return; }
+    if (far) { toast(t('Sorry, this restaurant delivers only within {} km').replace('{}', radius), 'err'); return; }
     setBusy(true);
     try {
       const id = await placeOrder({
@@ -70,7 +77,7 @@ export default function CartPage({ nav, onPlaced }) {
       LS.set('pp_pay', pay);
       if (pay === 'upi_now' && rest.upiId) {
         // money goes straight to the restaurant's own UPI
-        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: total - discount + fee, note: `PetPyaar order ${rest.name}`, ref: id }), '');
+        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: bill.total, note: `FoodGaon order ${rest.name}`, ref: id }), '');
       }
       cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
@@ -92,7 +99,7 @@ export default function CartPage({ nav, onPlaced }) {
             </div>
           ))}
           <button className="link small" onClick={() => nav.openRest(cart.restaurantId)}><Icon name="plus" size={14} /> Add more items</button>
-          <textarea className="input note" rows={2} placeholder="Any request for the restaurant? (e.g. less spicy)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={140} />
+          <NoteBox value={note} onChange={setNote} />
         </div>
 
         {config.showCalories && kcal > 0 && (
@@ -118,19 +125,22 @@ export default function CartPage({ nav, onPlaced }) {
           )}
         </div>
 
-        <div className="card">
-          <h4>Bill details</h4>
-          <div className="bill"><span>Item total</span><span>{rupee(total)}</span></div>
-          <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <><s className="muted">₹30</s> <b className="t-green">FREE</b></>}</span></div>
+        <div className="card bill-card">
+          <h4><Icon name="receipt" size={18} /> Bill details</h4>
+          <div className="bill"><span>{`Item total (${list.reduce((a, x) => a + x.qty, 0)} items)`}</span><span>{rupee(total)}</span></div>
           {discount > 0 && <div className="bill t-green"><span>{`Coupon (${applied.code})`}</span><span>− {rupee(discount)}</span></div>}
-          <div className="bill total"><span>To pay</span><span>{rupee(total - discount + fee)}</span></div>
-          {discount > 0 && <div className="saved-strip">{`🎉 You saved ${rupee(discount + 30)} on this order`}</div>}
+          <div className="bill"><span>{`GST ${bill.gstPct}% on food`}</span><span>{rupee(bill.gst)}</span></div>
+          <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <b className="t-green">FREE</b>}</span></div>
+          <div className="bill total"><span>To pay</span><span>{rupee(bill.total)}</span></div>
+          <p className="tiny muted">Prices on the menu are without GST. GST is added once on the bill.</p>
+          {discount > 0 && <div className="saved-strip">{`🎉 You saved ${rupee(discount)} on this order`}</div>}
+          {minOrder > 0 && total < minOrder && <div className="alert alert-amber">{`Add ${rupee(minOrder - total)} more — minimum order is ${rupee(minOrder)}`}</div>}
         </div>
 
         <div className="card">
           <div className="row between"><h4>Deliver to</h4><button className="link small" onClick={() => (addrs.length ? nav.go({ name: 'address' }) : setForm(true))}>{addrs.length ? 'Change' : 'Add'}</button></div>
           {addr ? (
-            <div className="addr-mini"><Icon name="pin" size={20} /><div><b>{addr.label}</b><p className="small muted" data-notr="">{addrLine(addr)}</p><small className="muted">{addr.name} · {addr.phone}{!addr.lat && <> · <span className="t-red">no GPS pin</span></>}</small></div></div>
+            <div className="addr-mini"><Icon name="pin" size={20} /><div><b>{addr.label}</b><p className="small muted" data-notr="">{addrLine(addr)}</p><small className="muted">{addr.name} · {addr.phone}{!addr.lat && <> · <span className="t-red">no GPS pin</span></>}{dist != null && <> · {`${dist.toFixed(1)} km`}</>}</small>{far && <div className="alert alert-red">{`This restaurant delivers within ${radius} km. Your address is ${dist.toFixed(1)} km away.`}</div>}</div></div>
           ) : <p className="muted small">Add your address to place the order</p>}
         </div>
 
@@ -140,13 +150,13 @@ export default function CartPage({ nav, onPlaced }) {
           {upiDel && <PayOpt id="upi_rider" cur={pay} set={setPay} icon="upi" title="Pay on delivery by UPI" sub="Scan the restaurant's QR when food arrives" />}
           {cod && <PayOpt id="cod" cur={pay} set={setPay} icon="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
           {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added UPI yet, so only cash is available.</p>}
-          <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. PetPyaar never holds your money.</p>
+          <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. FoodGaon never holds your money.</p>
         </div>
         <p className="tiny muted center">Restaurant can take 1-2 minutes to accept. You can cancel until it is accepted.</p>
       </div>
 
       <div className="place-bar">
-        <div><b>{rupee(total - discount + fee)}</b><small>TOTAL</small></div>
+        <div><b>{rupee(bill.total)}</b><small>TOTAL</small></div>
         <button className="btn primary lg grow" disabled={busy} onClick={place}>{busy ? 'Placing…' : !user ? 'Log in to order' : !addr ? 'Add address' : pay === 'upi_now' ? 'Pay & place order' : 'Place order'}</button>
       </div>
       <AddressForm open={form} onClose={() => setForm(false)} />

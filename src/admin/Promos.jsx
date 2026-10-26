@@ -96,7 +96,7 @@ function CouponEditor({ open, o, rests, onClose }) {
           </select>
         </Field>
         <Field label="Who pays the discount?">
-          <select className="input" value={f.fundedBy} onChange={set('fundedBy')}><option value="admin">{t('You (PetPyaar)')}</option><option value="restaurant">{t('Restaurant')}</option></select>
+          <select className="input" value={f.fundedBy} onChange={set('fundedBy')}><option value="admin">{t('You (FoodGaon)')}</option><option value="restaurant">{t('Restaurant')}</option></select>
         </Field>
       </div>
       <div className="row gap">

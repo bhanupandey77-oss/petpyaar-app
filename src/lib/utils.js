@@ -47,7 +47,7 @@ export const plain = (phone) => String(phone || '').replace(/^\+91/, '');
 
 const ascii = (s, d) => { const t = String(s || '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim(); return t || d; };
 export const upiLink = ({ upiId, upiName, amount, note, ref }) =>
-  `upi://pay?pa=${String(upiId).trim()}&pn=${encodeURIComponent(ascii(upiName, 'PetPyaar'))}` +
+  `upi://pay?pa=${String(upiId).trim()}&pn=${encodeURIComponent(ascii(upiName, 'FoodGaon'))}` +
   (amount ? `&am=${Number(amount).toFixed(2)}` : '') + '&cu=INR' +
   `&tn=${encodeURIComponent(ascii(note, 'Food order').slice(0, 50))}` +
   (ref ? `&tr=${encodeURIComponent(ascii(ref, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 30))}` : '');

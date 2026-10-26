@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, signOut, updateProfile,
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber, signOut, updateProfile,
   PhoneAuthProvider, GoogleAuthProvider, signInWithCredential, signInWithPopup,
   indexedDBLocalPersistence, browserLocalPersistence, initializeAuth, browserPopupRedirectResolver,
 } from 'firebase/auth';
@@ -85,6 +85,30 @@ export async function sendOtp(phone10, containerId) {
     }
   }
   return webOtp(phone, containerId);
+}
+
+/* ---------- Mock OTP (testing phase) ----------
+   Any 10-digit number + OTP 1234 logs in. Behind the scenes each number gets its own
+   Firebase email/password account: 91XXXXXXXXXX@login.foodgaon.app
+   Firestore rules read the phone back from this email. Switch to real SMS OTP before public launch. */
+export const MOCK_OTP = '1234';
+export const MOCK_DOMAIN = 'login.foodgaon.app';
+const mockEmail = (p10) => `91${p10}@${MOCK_DOMAIN}`;
+const mockPass = (p10) => `FG-${p10}-tg2026`;
+export async function mockLogin(phone10, code) {
+  if (String(code) !== MOCK_OTP) throw Object.assign(new Error('wrong otp'), { code: 'auth/invalid-verification-code' });
+  const email = mockEmail(phone10); const pass = mockPass(phone10);
+  try { return await signInWithEmailAndPassword(auth, email, pass); } catch (e) {
+    if (!/user-not-found|invalid-credential|invalid-login/.test(e.code || '')) throw e;
+    return await createUserWithEmailAndPassword(auth, email, pass);
+  }
+}
+/** +91 phone of the signed-in user (real SMS login, or mock login email) */
+export function phoneOf(u) {
+  if (!u) return '';
+  if (u.phoneNumber) return u.phoneNumber;
+  const m = /^(91\d{10})@login\.foodgaon\.app$/.exec(u.email || '');
+  return m ? '+' + m[1] : '';
 }
 
 /* ---------- Google ---------- */

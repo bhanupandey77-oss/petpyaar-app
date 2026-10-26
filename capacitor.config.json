@@ -1,6 +1,6 @@
 {
   "appId": "in.pandeytechno.petpyaar",
-  "appName": "पेटPyaar",
+  "appName": "FoodGaon",
   "webDir": "dist",
   "android": {
     "backgroundColor": "#fff7ef"

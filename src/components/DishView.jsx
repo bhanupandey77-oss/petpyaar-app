@@ -7,6 +7,11 @@ import { FloatingVeggies, KcalRing, flyToCart } from './Motion.jsx';
 import { t } from '../i18n/index.js';
 
 const SLIDE_MS = 3400;
+const TAGS = {
+  sweets: ['मीठा', 'शुद्ध दूध-खोया', 'ताज़ा बना'], lassi: ['ठंडा-ठंडा', 'ताज़ा बना'], chinese: ['चटपटा', 'गरमा-गरम'],
+  fastfood: ['गरमा-गरम', 'बच्चों की पसंद'], northindian: ['गरमा-गरम', 'घर जैसा स्वाद'], chaat: ['चटपटा', 'करारा'],
+  thali: ['पूरा भोजन', 'गरमा-गरम'], southindian: ['हल्का', 'गरमा-गरम'], icecream: ['ठंडा', 'मीठा'],
+};
 
 export default function DishView({ it, rest, showKcal = true, onClose }) {
   const toast = useToast();
@@ -82,9 +87,18 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
           <div className="dv-row">
             <div>
               <div className="dv-price"><b key={it.price}>{rupee(it.price)}</b><span className="muted">· {it.qty}</span></div>
-              <p className="muted">{it.desc}</p>
+              <p className="muted small">{it.desc}</p>
             </div>
             {showKcal && it.kcal > 0 && <KcalRing kcal={it.kcal} />}
+          </div>
+          {it.story && (
+            <blockquote className="dv-story" data-notr="" lang="hi">
+              <span className="dvs-q">“</span>{it.story}
+            </blockquote>
+          )}
+          <div className="dv-tags" data-notr="" lang="hi">
+            {(TAGS[it.cat] || ['ताज़ा बना']).map((x) => <span key={x}>{x}</span>)}
+            <span>{`मात्रा: ${it.qty}`}</span>
           </div>
           {showKcal && it.kcal > 0 && (
             <div className="dv-kcal-note"><Icon name="fire" size={14} /> {`About ${Math.round((it.kcal / 2000) * 100)}% of a 2,000 kcal day`}</div>

@@ -7,8 +7,10 @@ import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDa
 import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS } from '../data/menu.js';
 import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantApp.jsx';
 import MenuManager from '../restaurant/MenuManager.jsx';
+import Team from '../restaurant/Team.jsx';
 import MapView from '../components/MapView.jsx';
 import Promos from './Promos.jsx';
+import { DocSheet, GstReport } from '../components/Docs.jsx';
 import { UpiEditor } from '../components/Pay.jsx';
 import { dueOf } from '../restaurant/RestaurantApp.jsx';
 import { t } from '../i18n/index.js';
@@ -18,7 +20,7 @@ export default function AdminApp() {
   const [tab, setTab] = useState('dash');
   const days = useMemo(() => [todayKey(), dayKey(Date.now() - 86400000)], []);
   const orders = useList('orders', [['day', 'in', days]], [days.join()]);
-  const newCount = useNewOrderAlert(orders, 'New order on PetPyaar!');
+  const newCount = useNewOrderAlert(orders, 'New order on FoodGaon!');
   useEffect(() => { askNotifyPermission(); window.addEventListener('pointerdown', unlockAudio, { once: true }); }, []);
   useAutoSeed();
   useEffect(() => { window.__ppBack = () => { if (tab !== 'dash') { setTab('dash'); return true; } return false; }; return () => { window.__ppBack = null; }; });
@@ -27,7 +29,7 @@ export default function AdminApp() {
       <header className="panel-head admin-head">
         <div className="ph-row">
           <Logo size={34} />
-          <div className="grow"><b>PetPyaar Admin</b><small data-notr="">Pandey Techno</small></div>
+          <div className="grow"><b>FoodGaon Admin</b><small data-notr="">TechGaon AI Services</small></div>
           <RoleSwitchButton />
           <button className="icon-btn light" onClick={logout} aria-label="Log out"><Icon name="logout" /></button>
         </div>
@@ -53,7 +55,7 @@ export default function AdminApp() {
 }
 
 /* when the app ships new starter dishes/offers, add the missing ones automatically (never overwrites edits) */
-const SEED_V = 'v3';
+const SEED_V = 'v4';
 function useAutoSeed() {
   const items = useItems();
   const rests = useRestaurants();
@@ -61,18 +63,24 @@ function useAutoSeed() {
   useEffect(() => {
     if (!items || !rests || localStorage.getItem('pp_seed') === SEED_V) return;
     const haveI = new Set(items.map((i) => i.id)); const haveR = new Set(rests.map((r) => r.id));
+    const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
     const ops = [
       ...RESTAURANTS.filter((r) => !haveR.has(r.id)).map((r) => ['set', 'restaurants', r.id, r]),
+      // v4: FoodGaon — real restaurants get owner numbers, own riders, FSSAI/GST fields, 5 km radius, ₹50 minimum
+      ...RESTAURANTS.filter((r) => haveR.has(r.id) && !r.demo).map((r) => {
+        const cur = rests.find((x) => x.id === r.id) || {};
+        const add = pick(r, ['ownerPhone', 'ownerName', 'riders', 'radiusKm', 'minOrder', 'riderRate', 'selfDelivery']);
+        if (cur.fssai === undefined) add.fssai = ''; if (cur.gstin === undefined) add.gstin = '';
+        return ['set', 'restaurants', r.id, add];
+      }),
       ...ITEMS.filter((i) => !haveI.has(i.id)).map((i) => ['set', 'items', i.id, i]),
-      ...ITEMS.filter((i) => haveI.has(i.id) && !items.find((x) => x.id === i.id).gallery).map((i) => ['set', 'items', i.id, { gallery: i.gallery }]),
+      ...ITEMS.filter((i) => haveI.has(i.id)).map((i) => { const cur = items.find((x) => x.id === i.id); const add = {}; if (!cur.gallery) add.gallery = i.gallery; if (!cur.story && i.story) add.story = i.story; return Object.keys(add).length ? ['set', 'items', i.id, add] : null; }).filter(Boolean),
       ...OFFERS.map((o) => ['set', 'offers', o.id, o]),
-      // v3: one role per number — admin / Raju Lassi / rider
+      ...BANNERS.filter((b) => b.id === 'b1').map((b) => ['set', 'banners', b.id, b]),
       ...STAFF.map((x) => ['set', 'staff', x.phone, x]),
-      ...RESTAURANTS.filter((r) => r.id === 'raju-lassi').map((r) => ['set', 'restaurants', r.id, { ownerPhone: r.ownerPhone }]),
-      ['set', 'config', 'app', { riders: STAFF.filter((x) => x.rider).map((x) => ({ phone: x.phone, name: x.name })) }],
+      ['set', 'config', 'app', pick(DEFAULT_CONFIG, ['appName', 'firmName', 'firmAddress', 'supportEmail', 'otpMode', 'gstPct', 'commissionPct', 'commissionGstPct', 'restaurantDeliveryCharge', 'minOrder', 'radiusKm', 'upiName'])],
     ];
-    if (!ops.length) { localStorage.setItem('pp_seed', SEED_V); return; }
-    bulk(ops).then(() => { localStorage.setItem('pp_seed', SEED_V); toast(t('New dishes, photos & offers added')); }).catch((e) => console.warn('autoseed', e));
+    bulk(ops).then(() => { localStorage.setItem('pp_seed', SEED_V); toast(t('FoodGaon setup updated')); }).catch((e) => console.warn('autoseed', e));
   }, [items, rests]); // eslint-disable-line
 }
 
@@ -189,16 +197,17 @@ function RestEditor({ open, r, onClose }) {
   const [f, setF] = useState(null);
   const [del, setDel] = useState(false);
   useEffect(() => {
-    if (open) setF({ name: '', tagline: '', address: '', ownerPhone: '', ownerName: '', prepMins: 20, commissionPct: '', deliveryCharge: '', cover: '', ...r, commissionPct: r?.commissionPct ?? '', deliveryCharge: r?.deliveryCharge ?? '' });
+    if (open) setF({ fssai: '', gstin: '', radiusKm: 5, minOrder: 50, name: '', tagline: '', address: '', ownerPhone: '', ownerName: '', prepMins: 20, commissionPct: '', deliveryCharge: '', cover: '', ...r, commissionPct: r?.commissionPct ?? '', deliveryCharge: r?.deliveryCharge ?? '' });
   }, [open]); // eslint-disable-line
   if (!f) return null;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
     if (!f.name.trim()) { toast(t('Name is required'), 'err'); return; }
-    if (f.ownerPhone && !/^[6-9]\d{9}$/.test(f.ownerPhone)) { toast(t('Enter a valid 10-digit mobile number'), 'err'); return; }
+    if (f.ownerPhone && !/^\d{10}$/.test(f.ownerPhone)) { toast(t('Enter a valid 10-digit mobile number'), 'err'); return; }
     const id = r?.id || f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Date.now().toString(36).slice(-3);
     const data = {
       name: f.name.trim(), tagline: f.tagline.trim(), address: f.address.trim(), ownerPhone: f.ownerPhone, ownerName: f.ownerName.trim(),
+      fssai: (f.fssai || '').trim(), gstin: (f.gstin || '').trim().toUpperCase(), radiusKm: Number(f.radiusKm) || 5, minOrder: Number(f.minOrder) || 0,
       prepMins: Number(f.prepMins) || 20, cover: f.cover || '', open: r?.open ?? true, rating: r?.rating ?? 4.2, sort: r?.sort ?? 20, demo: false,
       cuisines: r?.cuisines || [], lat: r?.lat || null, lng: r?.lng || null,
       ...(f.commissionPct !== '' ? { commissionPct: Number(f.commissionPct) } : {}),
@@ -222,6 +231,14 @@ function RestEditor({ open, r, onClose }) {
         <Field label="Owner name"><input className="input" value={f.ownerName} onChange={set('ownerName')} /></Field>
       </div>
       <div className="row gap">
+        <Field label="FSSAI no. (required)"><input className="input" inputMode="numeric" maxLength={14} value={f.fssai} onChange={(e) => setF({ ...f, fssai: e.target.value.replace(/\D/g, '') })} /></Field>
+        <Field label="GSTIN"><input className="input" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} /></Field>
+      </div>
+      <div className="row gap">
+        <Field label="Delivery area km"><input className="input" inputMode="decimal" value={f.radiusKm} onChange={set('radiusKm')} /></Field>
+        <Field label="Minimum order ₹"><input className="input" inputMode="numeric" value={f.minOrder} onChange={set('minOrder')} /></Field>
+      </div>
+      <div className="row gap">
         <Field label="Commission %" hint={`Blank = default ${config.commissionPct}%`}><input className="input" inputMode="decimal" value={f.commissionPct} onChange={set('commissionPct')} /></Field>
         <Field label="Delivery charge ₹" hint={`Blank = default ₹${config.restaurantDeliveryCharge}`}><input className="input" inputMode="decimal" value={f.deliveryCharge} onChange={set('deliveryCharge')} /></Field>
       </div>
@@ -235,39 +252,16 @@ function RestEditor({ open, r, onClose }) {
 }
 
 function Riders() {
-  const { config } = useApp();
-  const toast = useToast();
-  const [p, setP] = useState(''); const [n, setN] = useState('');
-  const riders = config.riders || [];
-  const add = async () => {
-    if (!/^[6-9]\d{9}$/.test(p) || !n.trim()) { toast(t('Enter name and a valid 10-digit mobile number'), 'err'); return; }
-    const phone = '+91' + p;
-    try {
-      await bulk([['set', 'staff', phone, { rider: true, name: n.trim() }], ['set', 'config', 'app', { riders: [...riders.filter((r) => r.phone !== phone), { phone, name: n.trim() }] }]]);
-      setP(''); setN(''); toast(t('Rider added'));
-    } catch { toast(t('Could not save'), 'err'); }
-  };
-  const del = async (r) => {
-    try { await bulk([['set', 'staff', r.phone, { rider: false }], ['set', 'config', 'app', { riders: riders.filter((x) => x.phone !== r.phone) }]]); } catch { toast(t('Could not save'), 'err'); }
-  };
+  const rests = (useRestaurants() || []).filter((r) => !r.demo);
+  const [pick, setPick] = useState(null);
+  const r = rests.find((x) => x.id === pick) || rests[0];
+  const orders = useList('orders', r ? [['restaurantId', '==', r.id]] : null, [r?.id]);
+  if (!r) return <div className="pad"><Empty icon="bike" title="No restaurant yet" /></div>;
   return (
     <div className="pad-x">
-      <div className="card">
-        <h4>Add delivery partner</h4>
-        <div className="row gap">
-          <input className="input" placeholder="Name" value={n} onChange={(e) => setN(e.target.value)} />
-          <input className="input" placeholder="Mobile" inputMode="numeric" maxLength={10} value={p} onChange={(e) => setP(e.target.value.replace(/\D/g, ''))} />
-        </div>
-        <button className="btn primary block" onClick={add}><Icon name="plus" size={18} /> Add</button>
-        <p className="tiny muted">The partner logs in with this number and gets the Deliveries screen.</p>
-      </div>
-      {riders.map((r) => (
-        <div key={r.phone} className="mm-row">
-          <span className="avatar"><Icon name="bike" size={20} /></span>
-          <div className="grow"><b data-notr="">{r.name}</b><small className="muted">{plain(r.phone)}</small></div>
-          <button className="icon-btn" onClick={() => del(r)} aria-label="Remove"><Icon name="trash" size={18} /></button>
-        </div>
-      ))}
+      <p className="tiny muted">Each restaurant has its own delivery boys. Pick a restaurant to manage them.</p>
+      <div className="chip-row wrap">{rests.map((x) => <button key={x.id} className={'fchip' + (x.id === r.id ? ' on' : '')} onClick={() => setPick(x.id)} data-notr="">{x.name}</button>)}</div>
+      <Team rest={r} orders={orders || []} />
     </div>
   );
 }
@@ -282,6 +276,8 @@ function Settings() {
     try {
       await put('config', 'app', {
         commissionPct: Number(f.commissionPct) || 0, customerDeliveryFee: Number(f.customerDeliveryFee) || 0, restaurantDeliveryCharge: Number(f.restaurantDeliveryCharge) || 0,
+        gstPct: Number(f.gstPct) || 0, radiusKm: Number(f.radiusKm) || 0, otpMode: f.otpMode === 'real' ? 'real' : 'mock',
+        firmName: (f.firmName || '').trim(), firmAddress: (f.firmAddress || '').trim(), gstin: (f.gstin || '').trim().toUpperCase(), supportEmail: (f.supportEmail || '').trim(),
         minOrder: Number(f.minOrder) || 0, supportPhone: (f.supportPhone || '').trim(), upiNowEnabled: f.upiNowEnabled !== false,
         serviceArea: f.serviceArea || '', codEnabled: !!f.codEnabled, upiEnabled: !!f.upiEnabled, showCalories: !!f.showCalories,
       });
@@ -291,10 +287,23 @@ function Settings() {
   return (
     <div className="pad-x">
       <div className="card">
+        <h4><Icon name="store" size={18} /> Firm</h4>
+        <Field label="Firm name"><input className="input" value={f.firmName || ''} onChange={set('firmName')} data-notr="" /></Field>
+        <div className="row gap">
+          <Field label="GSTIN" hint="Shown on every customer bill"><input className="input" maxLength={15} value={f.gstin || ''} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} data-notr="" /></Field>
+          <Field label="Email"><input className="input" value={f.supportEmail || ''} onChange={set('supportEmail')} data-notr="" /></Field>
+        </div>
+        <Field label="Address"><input className="input" value={f.firmAddress || ''} onChange={set('firmAddress')} data-notr="" /></Field>
+      </div>
+      <div className="card">
         <h4>Money</h4>
         <div className="row gap">
-          <Field label="Commission %" hint="Taken from restaurant"><input className="input" inputMode="decimal" value={f.commissionPct} onChange={set('commissionPct')} /></Field>
-          <Field label="Delivery charge ₹" hint="Paid by restaurant per order"><input className="input" inputMode="decimal" value={f.restaurantDeliveryCharge} onChange={set('restaurantDeliveryCharge')} /></Field>
+          <Field label="Commission %" hint="On full bill incl. GST"><input className="input" inputMode="decimal" value={f.commissionPct} onChange={set('commissionPct')} /></Field>
+          <Field label="GST on food %" hint="Added on customer bill"><input className="input" inputMode="decimal" value={f.gstPct ?? 5} onChange={set('gstPct')} /></Field>
+        </div>
+        <div className="row gap">
+          <Field label="Delivery area km" hint="Default for restaurants"><input className="input" inputMode="decimal" value={f.radiusKm ?? 5} onChange={set('radiusKm')} /></Field>
+          <Field label="Delivery charge ₹" hint="0 = restaurant delivers free"><input className="input" inputMode="decimal" value={f.restaurantDeliveryCharge} onChange={set('restaurantDeliveryCharge')} /></Field>
         </div>
         <div className="row gap">
           <Field label="Customer delivery fee ₹" hint="0 = FREE delivery"><input className="input" inputMode="decimal" value={f.customerDeliveryFee} onChange={set('customerDeliveryFee')} /></Field>
@@ -303,21 +312,24 @@ function Settings() {
       </div>
       <div className="card">
         <h4>Payments</h4>
-        <p className="tiny muted">Customers pay each restaurant's own UPI. PetPyaar never holds customer money.</p>
+        <p className="tiny muted">Customers pay each restaurant's own UPI. FoodGaon never holds customer money.</p>
         <label className="check-row"><input type="checkbox" checked={f.upiNowEnabled !== false} onChange={(e) => setF({ ...f, upiNowEnabled: e.target.checked })} /> Pay now by UPI</label>
         <label className="check-row"><input type="checkbox" checked={!!f.upiEnabled} onChange={(e) => setF({ ...f, upiEnabled: e.target.checked })} /> Pay on delivery by UPI</label>
         <label className="check-row"><input type="checkbox" checked={!!f.codEnabled} onChange={(e) => setF({ ...f, codEnabled: e.target.checked })} /> Cash on delivery</label>
       </div>
       <div className="card">
         <h4>App</h4>
+        <div className="seg"><button className={f.otpMode !== 'real' ? 'on' : ''} onClick={() => setF({ ...f, otpMode: 'mock' })}>Test OTP 1234</button><button className={f.otpMode === 'real' ? 'on' : ''} onClick={() => setF({ ...f, otpMode: 'real' })}>Real SMS OTP</button></div>
+        <p className="tiny muted">{f.otpMode === 'real' ? 'Customers get a real SMS OTP (needs Firebase billing beyond 10 SMS/day).' : 'Testing: any number logs in with OTP 1234. Switch to real SMS before public launch.'}</p>
         <Field label="Support phone"><input className="input" inputMode="numeric" value={f.supportPhone} onChange={set('supportPhone')} /></Field>
         <Field label="Service area"><input className="input" value={f.serviceArea} onChange={set('serviceArea')} /></Field>
         <label className="check-row"><input type="checkbox" checked={!!f.showCalories} onChange={(e) => setF({ ...f, showCalories: e.target.checked })} /> Show calories on dishes</label>
       </div>
       <button className="btn primary block lg" onClick={save}>Save settings</button>
-      <UpiEditor value={config} title="PetPyaar UPI — restaurants send commission here" hint="Restaurants see this UPI ID and QR in their Earnings tab when paying PetPyaar dues."
+      <UpiEditor value={config} title="FoodGaon UPI — restaurants send commission here" hint="Restaurants see this UPI ID and QR in their Earnings tab when paying FoodGaon dues."
         onSave={(v) => put('config', 'app', v)} />
       <Settlements />
+      <GstCard />
       <SeedCard small />
     </div>
   );
@@ -352,6 +364,22 @@ function Settlements() {
         </div>
       ))}
       {!sorted.length && <p className="tiny muted">No commission payments yet</p>}
+    </div>
+  );
+}
+
+function GstCard() {
+  const { config } = useApp();
+  const rests = useRestaurants() || [];
+  const [month, setMonth] = useState(() => todayKey().slice(0, 7));
+  const [open, setOpen] = useState(false);
+  const orders = useList('orders', open ? [['status', '==', 'delivered']] : null, [open]);
+  return (
+    <div className="card">
+      <h4><Icon name="receipt" size={18} /> GST report</h4>
+      <p className="tiny muted">Monthly totals for GSTR-1 / GSTR-3B: food GST (sec. 9(5)) + GST on your commission.</p>
+      <div className="row gap"><input className="input" type="month" value={month} onChange={(e) => setMonth(e.target.value)} /><button className="btn primary" onClick={() => setOpen(true)}>View / PDF</button></div>
+      {open && orders && <DocSheet open onClose={() => setOpen(false)} title="GST report" fileName={`FoodGaon-GST-${month}.pdf`}><GstReport month={month} orders={orders} rests={rests} config={config} /></DocSheet>}
     </div>
   );
 }

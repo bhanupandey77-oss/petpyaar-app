@@ -4,7 +4,7 @@ import { useApp } from '../App.jsx';
 import MapView from '../components/MapView.jsx';
 import { getPosition } from '../lib/native.js';
 import { LS } from '../lib/utils.js';
-import { put, getOne } from '../lib/fb.js';
+import { put, getOne, phoneOf } from '../lib/fb.js';
 import { TopBar } from './RestaurantPage.jsx';
 import { t } from '../i18n/index.js';
 
@@ -38,7 +38,7 @@ export function AddressForm({ open, onClose, initial }) {
   const [a, setA] = useState(null);
   const [locating, setLocating] = useState(false);
   useEffect(() => {
-    if (open) setA(initial || { id: 'a' + Date.now(), label: 'Home', name: user?.displayName || '', phone: (user?.phoneNumber || '').replace('+91', ''), house: '', area: '', landmark: '', lat: null, lng: null });
+    if (open) setA(initial || { id: 'a' + Date.now(), label: 'Home', name: user?.displayName || '', phone: phoneOf(user).replace('+91', ''), house: '', area: '', landmark: '', lat: null, lng: null });
   }, [open]); // eslint-disable-line
   const set = (k) => (e) => setA((x) => ({ ...x, [k]: e.target ? e.target.value : e }));
   const locate = async () => {

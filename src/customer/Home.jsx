@@ -9,7 +9,6 @@ import { FloatingVeggies, Typewriter, Reveal } from '../components/Motion.jsx';
 import DishView from '../components/DishView.jsx';
 import { useOffers, isLive, offerLabel, offerTerms } from '../lib/offers.js';
 
-const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 
 export default function Home({ nav }) {
   const { user, config } = useApp();
@@ -35,11 +34,15 @@ export default function Home({ nav }) {
           </button>
           <Logo size={38} />
         </div>
-        <h1 className="hero-title"><span className="ht-1">{name ? `${greet()}, ${name}!` : `${greet()}!`}</span><br /><em className="ht-2">What would you like to eat?</em></h1>
+        <div className="pranam" data-notr="" lang="hi">
+          <span className="pr-badge" aria-hidden="true"><i className="pr-rays" /><b>🙏</b></span>
+          <span className="pr-txt"><b className="pr-word">प्रणाम{name ? ',' : ''}</b>{name && <span className="pr-name">{`${name} जी`}</span>}</span>
+        </div>
+        <h1 className="hero-title"><em className="ht-2">What would you like to eat?</em></h1>
         <button className="search-bar" onClick={() => nav.go({ name: 'search' })}>
           <Icon name="search" size={20} /><Typewriter prefix="Search" words={['Paneer Butter Masala', 'Sweet Lassi', 'Veg Steamed Momos', 'Gajar ka Halwa', 'Masala Dosa', 'Chocolate Shake', 'Hot Jalebi']} />
         </button>
-        <div className="veg-ribbon"><VegMark size={14} /> 100% pure vegetarian · FREE delivery</div>
+        <div className="veg-ribbon"><VegMark size={14} /> Pure veg · FREE delivery within 5 km</div>
       </header>
 
       <Banners list={(banners || []).filter((b) => b.active !== false)} nav={nav} />
@@ -90,9 +93,9 @@ export default function Home({ nav }) {
       </section>
 
       <footer className="home-foot">
-        <b>Khao, piyo,<br />pyaar karo!</b>
+        <b>Apna gaon,<br />apna swaad!</b>
         <span>Crafted with <Icon name="heart" size={14} fill="#e8461a" stroke={0} /> in Haidergarh</span>
-        <small data-notr="">Pandey Techno</small>
+        <small data-notr="">TechGaon AI Services</small>
       </footer>
       {view && <DishView it={view} rest={(rests || []).find((r) => r.id === view.restaurantId)} showKcal={config.showCalories} onClose={() => setView(null)} />}
       <OfferPopup popup={config.popup} />

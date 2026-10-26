@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { watchList, watchDoc, patch, put, newId, serverTimestamp } from './fb.js';
+import { watchList, watchDoc, patch, put, newId, serverTimestamp, phoneOf } from './fb.js';
 import { LS, todayKey, shortId } from './utils.js';
 
 /* ---------- live collections (small, public) ---------- */
@@ -75,25 +75,57 @@ export function cartTotals(c) {
 export const ACTIVE = ['placed', 'accepted', 'preparing', 'ready', 'picked'];
 export const r2 = (n) => Math.round(n * 100) / 100;
 
-export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note, offer, discount = 0 }) {
-  const { list, total, kcal } = cartTotals(cartData);
-  const pct = Number(rest.commissionPct ?? config.commissionPct ?? 0);
-  const disc = Math.max(0, Math.min(Number(discount) || 0, total));
-  const discountBy = disc ? (offer?.fundedBy === 'restaurant' ? 'restaurant' : 'admin') : '';
-  const base = discountBy === 'restaurant' ? total - disc : total; // restaurant-funded discount lowers the commission base
-  const commission = r2((base * pct) / 100);
-  const restDelivery = Number(rest.deliveryCharge ?? config.restaurantDeliveryCharge ?? 0);
+/** FoodGaon money rules (per order)
+ *  item prices are WITHOUT GST → GST 5% added on the bill (FoodGaon pays it to govt under section 9(5))
+ *  commission 4.90% on the full bill incl. GST (it already includes FoodGaon's own 18% GST)
+ *  customer pays the restaurant directly; every week the restaurant sends FoodGaon:  GST + commission (− FoodGaon-funded coupon)  */
+export function billFor({ itemTotal, discount = 0, discountBy = '', rest = {}, config = {} }) {
+  const gstPct = Number(config.gstPct ?? 5);
+  const pct = Number(rest.commissionPct ?? config.commissionPct ?? 4.9);
+  const cgPct = Number(config.commissionGstPct ?? 18);
+  const disc = Math.max(0, Math.min(Number(discount) || 0, itemTotal));
+  const taxable = r2(itemTotal - disc);
+  const gst = r2((taxable * gstPct) / 100);
   const deliveryFee = Number(config.customerDeliveryFee || 0);
+  const total = r2(taxable + gst + deliveryFee);
+  const commission = r2((total * pct) / 100);
+  const commissionGst = r2((commission * cgPct) / (100 + cgPct));
+  const fgCoupon = discountBy === 'admin' ? disc : 0; // FoodGaon gives this back to the restaurant
+  const dues = r2(gst + commission - fgCoupon);
+  return { gstPct, commissionPct: pct, taxable, gst, cgst: r2(gst / 2), sgst: r2(gst - r2(gst / 2)), deliveryFee, total, commission, commissionGst, fgCoupon, dues, payable: r2(total - dues), discount: disc };
+}
+
+/** weekly settlement cycle: 1-7, 8-14, 15-21, 22-28, 29-end → '2026-11-W1' */
+export function cycleOf(ms) {
+  const d = new Date(ms); const w = Math.min(5, Math.ceil(d.getDate() / 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-W${w}`;
+}
+export function cycleRange(key) {
+  const [y, m, w] = key.split('-'); const n = Number(w.slice(1));
+  const last = new Date(Number(y), Number(m), 0).getDate();
+  const from = (n - 1) * 7 + 1; const to = n === 5 ? last : n * 7;
+  const mon = new Date(Number(y), Number(m) - 1, 1).toLocaleString('en-IN', { month: 'short' });
+  return { from, to, label: `${from}-${to} ${mon} ${y}`, dueMs: new Date(Number(y), Number(m) - 1, to + 1).getTime() };
+}
+
+export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note, offer, discount = 0 }) {
+  const { list, total: itemTotal, kcal } = cartTotals(cartData);
+  const discountBy = discount ? (offer?.fundedBy === 'restaurant' ? 'restaurant' : 'admin') : '';
+  const b = billFor({ itemTotal, discount, discountBy, rest, config });
   const id = newId('orders');
   const now = Date.now();
   const order = {
-    code: shortId(), day: todayKey(), createdAt: serverTimestamp(), createdMs: now,
-    customerUid: user.uid, customerPhone: user.phoneNumber || (address?.phone ? '+91' + String(address.phone).replace(/\D/g, '').slice(-10) : ''), customerName,
+    code: shortId(), day: todayKey(), cycle: cycleOf(now), createdAt: serverTimestamp(), createdMs: now,
+    customerUid: user.uid, customerPhone: phoneOf(user) || (address?.phone ? '+91' + String(address.phone).replace(/\D/g, '').slice(-10) : ''), customerName,
     address, restaurantId: rest.id, restaurantName: rest.name, restaurantPhone: rest.ownerPhone || '', restaurantAddr: rest.address || '',
+    restFssai: rest.fssai || '', restGstin: rest.gstin || '',
     restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0 })),
-    itemTotal: total, deliveryFee, discount: disc, offerCode: disc ? offer.code : '', discountBy, total: total - disc + deliveryFee, kcal,
-    commissionPct: pct, commission, restDelivery, payable: r2(base - commission - restDelivery),
+    itemTotal, discount: b.discount, offerCode: b.discount ? offer.code : '', discountBy, kcal,
+    taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, deliveryFee: b.deliveryFee, total: b.total,
+    commissionPct: b.commissionPct, commission: b.commission, commissionGst: b.commissionGst, fgCoupon: b.fgCoupon,
+    dues: b.dues, restDelivery: 0, payable: b.payable,
+    firmName: config.firmName || 'TechGaon AI Services', firmGstin: config.gstin || '',
     payment, paid: false, paymentClaim: '', note: note || '',
     status: 'placed', riderPhone: '', riderName: '', prepMins: rest.prepMins || 20,
     timeline: { placed: now },

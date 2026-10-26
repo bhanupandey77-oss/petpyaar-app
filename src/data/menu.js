@@ -1,6 +1,7 @@
 // Starter data — 100% vegetarian. Calories are rough estimates per serving shown.
 import { photo } from './photos.js';
 import { extraPhotos } from './gallery.js';
+import { storyFor } from './stories.js';
 
 export const CATEGORIES = [
   { id: 'sweets', name: 'Sweets', img: 'gulab_jamun' },
@@ -17,9 +18,18 @@ export const CATEGORIES = [
 // Haidergarh, Barabanki (approx.) — each restaurant can set its exact spot from its panel
 const HG = { lat: 26.6178, lng: 81.3657 };
 
+const REAL = { fssai: '', gstin: '', radiusKm: 5, minOrder: 50, riderRate: 20, selfDelivery: true };
 export const RESTAURANTS = [
   {
-    id: 'raju-lassi', name: 'Raju Lassi', ownerPhone: '9120799904', ownerName: 'Raju',
+    id: 'parag', name: 'Parag Milk Parlour & Restaurant', ownerPhone: '9120799904', ownerName: 'Parag',
+    tagline: 'Rabri, lassi, shakes, paneer & full meals', cuisines: ['northindian', 'lassi', 'sweets'],
+    cover: photo('pbm'), rating: 4.7, prepMins: 20, open: true, demo: false, ...REAL,
+    riders: [{ phone: '+911234567890', name: 'Ajay Kumar' }],
+    address: 'Main Road, Haidergarh, Barabanki', lat: HG.lat + 0.001, lng: HG.lng + 0.001, sort: 0,
+  },
+  {
+    id: 'raju-lassi', name: 'Raju Lassi', ownerPhone: '9198427160', ownerName: 'Raju', ...REAL,
+    riders: [{ phone: '+911234567891', name: 'Rakesh' }],
     tagline: 'Thick lassi, shakes & fresh sweets', cuisines: ['lassi', 'sweets'],
     cover: photo('lassi'), rating: 4.6, prepMins: 10, open: true, demo: false,
     address: 'Main Market, Haidergarh, Barabanki', lat: HG.lat, lng: HG.lng, sort: 1,
@@ -57,12 +67,47 @@ export const RESTAURANTS = [
 ];
 
 const I = (restaurantId, key, name, cat, price, kcal, qty, desc, extra = {}) => ({
-  id: `${restaurantId}--${key}`, restaurantId, name, cat, price, kcal, qty, desc, img: photo(extra.img || key),
+  id: `${restaurantId}--${key}`, restaurantId, name, cat, price, kcal, qty, desc, img: photo(extra.img || key), story: storyFor(key, extra.img),
   gallery: [photo(extra.img || key), ...extraPhotos(extra.img || key)].filter(Boolean),
   veg: true, available: true, bestseller: !!extra.best, sort: extra.sort || 0,
 });
 
 export const ITEMS = [
+  // Parag Milk Parlour & Restaurant
+  I('parag', 'rabri', 'Kesar Rabri', 'sweets', 70, 320, '100 g', 'Slow-cooked thick milk with kesar and dry fruits', { best: true, sort: 1 }),
+  I('parag', 'jalebi', 'Jalebi with Rabri', 'sweets', 60, 420, '4 pieces + rabri', 'Hot crisp jalebi served with chilled rabri', { best: true, sort: 2 }),
+  I('parag', 'badam_milk', 'Kesar Badam Milk', 'lassi', 60, 280, '1 glass (300 ml)', 'Hot or chilled almond-saffron milk', { sort: 3 }),
+  I('parag', 'lassi', 'Malai Lassi', 'lassi', 50, 280, '1 glass (300 ml)', 'Thick sweet lassi with a layer of malai', { best: true, sort: 4 }),
+  I('parag', 'mango_lassi', 'Mango Lassi', 'lassi', 70, 320, '1 glass (300 ml)', 'Ripe mango blended with curd', { sort: 5 }),
+  I('parag', 'choco_shake', 'Chocolate Shake', 'lassi', 80, 380, '1 glass (300 ml)', 'Thick chocolate milkshake', { sort: 6 }),
+  I('parag', 'straw_shake', 'Strawberry Shake', 'lassi', 80, 330, '1 glass (300 ml)', 'Chilled strawberry milkshake', { sort: 7 }),
+  I('parag', 'cold_coffee', 'Cold Coffee', 'lassi', 80, 300, '1 glass (300 ml)', 'Creamy coffee with ice cream', { sort: 8 }),
+  I('parag', 'thandai', 'Kesar Thandai', 'lassi', 70, 300, '1 glass', 'Chilled milk with saffron and dry fruits', { sort: 9 }),
+  I('parag', 'kulfi', 'Malai Kulfi', 'icecream', 40, 190, '1 piece', 'Matka malai kulfi', { sort: 10 }),
+  I('parag', 'rasmalai', 'Rasmalai', 'sweets', 60, 280, '2 pieces', 'Soft chenna in saffron milk', { sort: 11 }),
+  I('parag', 'gulab_jamun', 'Gulab Jamun', 'sweets', 40, 300, '2 pieces', 'Warm khoya jamun in syrup', { sort: 12 }),
+  I('parag', 'rasgulla', 'Rasgulla', 'sweets', 40, 240, '2 pieces', 'Spongy chenna balls in syrup', { sort: 13 }),
+  I('parag', 'barfi', 'Khoya Barfi', 'sweets', 120, 1000, '250 g', 'Pure khoya barfi', { sort: 14 }),
+  I('parag', 'peda', 'Doodh Peda', 'sweets', 120, 950, '250 g', 'Soft milk peda', { sort: 15 }),
+  I('parag', 'pbm', 'Paneer Butter Masala', 'northindian', 180, 520, '1 bowl (serves 2)', 'Soft paneer in buttery tomato gravy', { best: true, sort: 16 }),
+  I('parag', 'shahi_paneer', 'Shahi Paneer', 'northindian', 190, 540, '1 bowl (serves 2)', 'Paneer in rich cashew-cream gravy', { sort: 17 }),
+  I('parag', 'kadai_paneer', 'Kadai Paneer', 'northindian', 190, 480, '1 bowl (serves 2)', 'Paneer with capsicum in kadai masala', { sort: 18 }),
+  I('parag', 'paneer_tikka', 'Paneer Tikka', 'northindian', 200, 420, '8 pieces', 'Tandoor-roasted spiced paneer', { sort: 19 }),
+  I('parag', 'malai_kofta', 'Malai Kofta', 'northindian', 190, 560, '1 bowl (serves 2)', 'Soft koftas in creamy gravy', { sort: 20 }),
+  I('parag', 'dal_makhani', 'Dal Makhani', 'northindian', 150, 450, '1 bowl (serves 2)', 'Black dal with butter and cream', { sort: 21 }),
+  I('parag', 'naan', 'Butter Naan', 'northindian', 40, 260, '1 piece', 'Tandoori naan with butter', { sort: 22 }),
+  I('parag', 'roti', 'Tandoori Roti', 'northindian', 15, 120, '1 piece', 'Whole wheat tandoori roti', { sort: 23 }),
+  I('parag', 'lachha', 'Lachha Paratha', 'northindian', 40, 280, '1 piece', 'Flaky layered paratha', { sort: 24 }),
+  I('parag', 'jeera_rice', 'Jeera Rice', 'thali', 110, 380, '1 plate', 'Basmati rice with ghee and cumin', { sort: 25 }),
+  I('parag', 'veg_biryani', 'Veg Biryani', 'thali', 150, 520, '1 plate', 'Dum biryani with raita', { sort: 26 }),
+  I('parag', 'thali', 'Parag Special Thali', 'thali', 160, 850, '1 thali', 'Paneer, dal, sabzi, 3 roti, rice, salad & sweet', { best: true, sort: 27 }),
+  I('parag', 'chole_bhature', 'Chole Bhature', 'northindian', 90, 650, '2 bhature + chole', 'Fluffy bhature with spicy chole', { sort: 28 }),
+  I('parag', 'masala_dosa', 'Masala Dosa', 'southindian', 100, 420, '1 dosa', 'Crisp dosa with potato masala, sambar & chutney', { sort: 29 }),
+  I('parag', 'chowmein', 'Veg Chowmein', 'chinese', 90, 480, '1 plate', 'Street-style veg noodles', { sort: 30 }),
+  I('parag', 'paneer_pakora', 'Paneer Pakora', 'chaat', 100, 420, '6 pieces', 'Paneer in crisp besan coating', { sort: 31 }),
+  I('parag', 'pav_bhaji', 'Pav Bhaji', 'fastfood', 90, 550, '2 pav + bhaji', 'Buttery bhaji with toasted pav', { sort: 32 }),
+  I('parag', 'sandwich', 'Grilled Veg Sandwich', 'fastfood', 60, 320, '1 sandwich', 'Butter-grilled veg sandwich', { sort: 33 }),
+
   // Raju Lassi
   I('raju-lassi', 'lassi', 'Sweet Lassi', 'lassi', 40, 260, '1 glass (300 ml)', 'Thick curd lassi topped with malai', { best: true }),
   I('raju-lassi', 'mango_lassi', 'Mango Lassi', 'lassi', 60, 320, '1 glass (300 ml)', 'Lassi blended with ripe mango pulp'),
@@ -176,34 +221,45 @@ export const ITEMS = [
 ];
 
 export const BANNERS = [
-  { id: 'b1', title: 'Pure veg. Pure pyaar.', sub: '100% vegetarian kitchens of Haidergarh', img: photo('ban_thali'), sort: 1 },
+  { id: 'b1', title: 'Your town, your taste', sub: 'Best restaurants of Haidergarh on FoodGaon', img: photo('ban_thali'), sort: 1 },
   { id: 'b2', title: 'FREE delivery', sub: 'No delivery charge on any order', img: photo('chowmein'), sort: 2 },
   { id: 'b3', title: 'Mithai by the box', sub: 'Fresh sweets for every occasion', img: photo('ban_sweets'), sort: 3 },
 ];
 
 export const OFFERS = [
-  { id: 'welcome', code: 'PYAAR20', title: '20% off on your order', sub: 'On all restaurants', type: 'percent', value: 20, minOrder: 149, maxOff: 50, restaurantId: '', fundedBy: 'admin', active: true, color: '#e8461a', until: '', sort: 1 },
+  { id: 'welcome', code: 'GAON20', title: '20% off on your order', sub: 'On all restaurants', type: 'percent', value: 20, minOrder: 149, maxOff: 50, restaurantId: '', fundedBy: 'admin', active: true, color: '#e8461a', until: '', sort: 1 },
   { id: 'sweet50', code: 'MITHAI50', title: 'Flat ₹50 off on sweets', sub: 'Mithaas Sweets & Chaat', type: 'flat', value: 50, minOrder: 299, maxOff: 0, restaurantId: 'mithaas', fundedBy: 'restaurant', active: true, color: '#d4307a', until: '', sort: 2 },
+  { id: 'parag10', code: 'PARAG10', title: '10% off at Parag', sub: 'Rabri, paneer & more', type: 'percent', value: 10, minOrder: 199, maxOff: 40, restaurantId: 'parag', fundedBy: 'restaurant', active: true, color: '#1e9e55', until: '', sort: 4 },
   { id: 'lassi10', code: 'LASSI10', title: '10% off at Raju Lassi', sub: 'Thick lassi, cool deal', type: 'percent', value: 10, minOrder: 99, maxOff: 30, restaurantId: 'raju-lassi', fundedBy: 'restaurant', active: true, color: '#7a4fe0', until: '', sort: 3 },
 ];
 
 export const DEFAULT_CONFIG = {
-  appName: 'PetPyaar',
-  commissionPct: 4.99,
+  appName: 'FoodGaon',
+  firmName: 'TechGaon AI Services',
+  firmAddress: 'Haidergarh, Barabanki, Uttar Pradesh',
+  gstin: '',
+  supportEmail: 'contact@techgaon.in',
+  otpMode: 'mock',
+  gstPct: 5,
+  commissionPct: 4.9,
+  commissionGstPct: 18,
   customerDeliveryFee: 0,
-  restaurantDeliveryCharge: 20,
-  minOrder: 0,
+  restaurantDeliveryCharge: 0,
+  minOrder: 50,
+  radiusKm: 5,
   codEnabled: true,
   upiEnabled: true,
   upiId: '',
-  upiName: 'PetPyaar',
+  upiName: 'FoodGaon',
   supportPhone: '9415213754',
   serviceArea: 'Haidergarh, Barabanki',
   showCalories: true,
 };
 
 export const STAFF = [
-  { phone: '+919415213754', name: 'Admin', admin: true, restaurant: '', rider: false },
-  { phone: '+919120799904', name: 'Raju', admin: false, restaurant: 'raju-lassi', rider: false },
-  { phone: '+919198427160', name: 'Rohit', admin: false, restaurant: '', rider: true },
+  { phone: '+919415213754', name: 'TechGaon Admin', admin: true, restaurant: '', rider: false, riderOf: '' },
+  { phone: '+919120799904', name: 'Parag', admin: false, restaurant: 'parag', rider: false, riderOf: '' },
+  { phone: '+919198427160', name: 'Raju', admin: false, restaurant: 'raju-lassi', rider: false, riderOf: '' },
+  { phone: '+911234567890', name: 'Ajay Kumar', admin: false, restaurant: '', rider: true, riderOf: 'parag' },
+  { phone: '+911234567891', name: 'Rakesh', admin: false, restaurant: '', rider: true, riderOf: 'raju-lassi' },
 ];

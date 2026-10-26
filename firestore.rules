@@ -2,12 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function ph() { return signedIn() && request.auth.token.phone_number != null ? request.auth.token.phone_number : 'none'; }
+    // phone of the user: real SMS login, or test login (91XXXXXXXXXX@login.foodgaon.app, OTP 1234 phase)
+    function ph() {
+      return !signedIn() ? 'none'
+        : request.auth.token.phone_number != null ? request.auth.token.phone_number
+        : (request.auth.token.email != null && request.auth.token.email.matches('^91[0-9]{10}@login[.]foodgaon[.]app$'))
+          ? '+' + request.auth.token.email.split('@')[0] : 'none';
+    }
     function staff() { return get(/databases/$(database)/documents/staff/$(ph())).data; }
     function isStaff() { return signedIn() && exists(/databases/$(database)/documents/staff/$(ph())); }
     function isSuper() { return ph() == '+919415213754'; }
     function isAdmin() { return isSuper() || (isStaff() && staff().get('admin', false) == true); }
     function isRider() { return isStaff() && staff().get('rider', false) == true; }
+    function riderOf() { return staff().get('riderOf', ''); }
     function ownsRest(rid) { return isStaff() && staff().get('restaurant', '') == rid; }
 
     match /config/{doc} {
@@ -36,6 +43,25 @@ service cloud.firestore {
     match /staff/{phone} {
       allow read: if phone == ph() || isAdmin();
       allow write: if isAdmin();
+      // a restaurant owner can add / remove its own delivery boys (never admin or owner rights)
+      allow create: if ownsRest(request.resource.data.riderOf)
+                    && request.resource.data.get('admin', false) == false && request.resource.data.get('restaurant', '') == '';
+      allow update: if (ownsRest(resource.data.get('riderOf', '')) || ownsRest(request.resource.data.get('riderOf', '')))
+                    && request.resource.data.get('admin', false) == false && request.resource.data.get('restaurant', '') == ''
+                    && resource.data.get('admin', false) == false && resource.data.get('restaurant', '') == '';
+    }
+    match /riders/{phone} {
+      allow read: if signedIn();
+      allow write: if phone == ph() || isAdmin();
+    }
+    match /riderPays/{id} {
+      allow create: if ownsRest(request.resource.data.restaurantId) && request.resource.data.status == 'sent'
+                    && request.resource.data.amount is number && request.resource.data.amount > 0;
+      allow read: if isAdmin() || ownsRest(resource.data.restaurantId) || resource.data.riderPhone == ph();
+      allow update: if isAdmin() || ownsRest(resource.data.restaurantId)
+                    || (resource.data.riderPhone == ph() && request.resource.data.status == 'received'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'receivedMs']));
+      allow delete: if isAdmin();
     }
     match /customers/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
@@ -48,11 +74,12 @@ service cloud.firestore {
                        resource.data.customerUid == request.auth.uid
                     || isAdmin()
                     || ownsRest(resource.data.restaurantId)
-                    || (isRider() && (resource.data.riderPhone == ph() || resource.data.riderPhone == '')));
+                    || (isRider() && (resource.data.riderPhone == ph()
+                         || (resource.data.riderPhone == '' && resource.data.restaurantId == riderOf()))));
       allow update: if isAdmin()
                     || ownsRest(resource.data.restaurantId)
                     || (isRider() && (resource.data.riderPhone == ph()
-                         || (resource.data.riderPhone == '' && request.resource.data.riderPhone == ph())))
+                         || (resource.data.riderPhone == '' && resource.data.restaurantId == riderOf() && request.resource.data.riderPhone == ph())))
                     || (signedIn() && resource.data.customerUid == request.auth.uid
                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs'])
                          && (request.resource.data.status == resource.data.status

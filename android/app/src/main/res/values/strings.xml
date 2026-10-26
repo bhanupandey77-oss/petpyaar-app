@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">पेटPyaar</string>
-    <string name="title_activity_main">पेटPyaar</string>
+    <string name="app_name">FoodGaon</string>
+    <string name="title_activity_main">FoodGaon</string>
     <string name="package_name">in.pandeytechno.petpyaar</string>
     <string name="custom_url_scheme">in.pandeytechno.petpyaar</string>
 </resources>

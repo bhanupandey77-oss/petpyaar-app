@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Empty, StatusChip, STATUS, Confirm, useToast, VegMark } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useDoc, setStatus, ACTIVE } from '../lib/data.js';
+import { useDoc, setStatus, ACTIVE, cartStore } from '../lib/data.js';
 import { patch } from '../lib/fb.js';
 import { rupee, fmtDateTime, fmtTime, tel, plain, km, ms, systemNotify } from '../lib/utils.js';
 import MapView from '../components/MapView.jsx';
 import { TopBar } from './RestaurantPage.jsx';
 import { t, tr } from '../i18n/index.js';
 import { UpiQr, UpiButton } from '../components/Pay.jsx';
+import { DocSheet, Invoice } from '../components/Docs.jsx';
 
 export function OrdersList({ orders, nav }) {
   const { user, askLogin } = useApp();
@@ -46,11 +47,13 @@ export function TrackOrder({ id, fresh, nav }) {
   const rider = useDoc('riderLoc', o?.riderPhone && ['accepted', 'preparing', 'ready', 'picked'].includes(o?.status) ? o.riderPhone : null);
   const [party, setParty] = useState(!!fresh);
   const [cancel, setCancel] = useState(false);
+  const [bill, setBill] = useState(false);
+  const { config } = useApp();
   const last = useRef(null);
   useEffect(() => { if (party) { const x = setTimeout(() => setParty(false), 2600); return () => clearTimeout(x); } }, [party]);
   useEffect(() => {
     if (!o) return;
-    if (last.current && last.current !== o.status) systemNotify('PetPyaar', t(STATUS[o.status]?.label || o.status));
+    if (last.current && last.current !== o.status) systemNotify('FoodGaon', t(STATUS[o.status]?.label || o.status));
     last.current = o.status;
   }, [o?.status]); // eslint-disable-line
 
@@ -125,8 +128,13 @@ export function TrackOrder({ id, fresh, nav }) {
             <div key={x.id} className="bill"><span><VegMark size={11} /> {x.name} × {x.qty}</span><span>{rupee(x.price * x.qty)}</span></div>
           ))}
           {o.discount > 0 && <div className="bill t-green"><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
+          {o.gst > 0 && <div className="bill"><span>{`GST ${o.gstPct || 5}%`}</span><span>{rupee(o.gst)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span className="t-green">{o.deliveryFee ? rupee(o.deliveryFee) : 'FREE'}</span></div>
           <div className="bill total"><span>{o.payment === 'cod' ? 'To pay in cash' : o.payment === 'upi_rider' ? 'To pay by UPI on delivery' : o.paid || o.paymentClaim ? 'Paid by UPI' : 'To pay by UPI'}</span><span>{rupee(o.total)}</span></div>
+          <button className="btn ghost block" onClick={() => setBill(true)}><Icon name="receipt" size={18} /> View bill / Download PDF</button>
+          {['delivered', 'cancelled', 'rejected'].includes(o.status) && (
+            <button className="btn primary block" onClick={() => { cartStore.clear(); o.items.forEach((x) => { for (let k = 0; k < x.qty; k++) cartStore.add({ ...x, restaurantId: o.restaurantId }); }); nav.openCart(); }}><Icon name="bag" size={18} /> Order again</button>
+          )}
           {o.kcal > 0 && <p className="tiny muted"><Icon name="fire" size={12} /> {`About ${o.kcal} kcal`}</p>}
           <p className="tiny muted">{fmtDateTime(o.createdMs)} · <span data-notr="">{o.address?.line}</span></p>
           {o.note && <p className="tiny muted">{`Note: ${o.note}`}</p>}
@@ -136,6 +144,7 @@ export function TrackOrder({ id, fresh, nav }) {
       </div>
       <Confirm open={cancel} onClose={() => setCancel(false)} danger title="Cancel this order?" text="The restaurant has not accepted it yet, so you can cancel for free." okText="Yes, cancel"
         onOk={() => setStatus(o, 'cancelled', { cancelReason: 'Cancelled by customer' }).catch(() => toast(t('Could not cancel. The restaurant may have accepted already.'), 'err'))} />
+      <DocSheet open={bill} onClose={() => setBill(false)} title="Your bill" fileName={`FoodGaon-bill-${o.code}.pdf`}><Invoice o={o} config={config} /></DocSheet>
     </div>
   );
 }
@@ -153,9 +162,9 @@ function PayBox({ o }) {
     <div className="card pay-box">
       <b>Complete your UPI payment</b>
       <p className="tiny muted">{`Pay ${rupee(o.total)} directly to ${o.restaurantName}`}</p>
-      <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} label="Open UPI app" />
+      <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Open UPI app" />
       <div className="row gap"><button className="btn ghost grow small" onClick={() => setShow(!show)}>{show ? 'Hide QR' : 'Show QR'}</button><button className="btn green grow small" onClick={claim}><Icon name="check" size={16} /> I have paid</button></div>
-      {show && <UpiQr upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} />}
+      {show && <UpiQr upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} />}
     </div>
   );
   // upi on delivery
@@ -163,7 +172,7 @@ function PayBox({ o }) {
     <div className="card pay-box">
       <b>Pay by UPI when your food arrives</b>
       <p className="tiny muted">{`${rupee(o.total)} goes directly to ${o.restaurantName}. The delivery partner will also show the QR.`}</p>
-      {o.status === 'picked' && <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`PetPyaar order ${ref}`} refId={ref} label="Pay now" />}
+      {o.status === 'picked' && <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Pay now" />}
       {o.status === 'picked' && <button className="btn green block small" onClick={claim}><Icon name="check" size={16} /> I have paid</button>}
     </div>
   );

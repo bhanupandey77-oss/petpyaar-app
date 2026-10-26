@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { auth, onAuthStateChanged, fullSignOut, watchDoc } from './lib/fb.js';
+import { auth, onAuthStateChanged, fullSignOut, watchDoc, phoneOf } from './lib/fb.js';
 import { LS } from './lib/utils.js';
 import { SUPER_ADMIN } from './firebase-config.js';
 import { DEFAULT_CONFIG } from './data/menu.js';
@@ -34,7 +34,7 @@ export default function App() {
   useEffect(() => { const t = setTimeout(() => setSplash(false), 2200); return () => clearTimeout(t); }, []);
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
   useEffect(() => watchDoc('config', 'app', (d) => d && setConfig({ ...DEFAULT_CONFIG, ...d })), []);
-  const phone = user?.phoneNumber || '';
+  const phone = phoneOf(user);
   useEffect(() => {
     setStaff(null); setStaffReady(false);
     if (!phone) { setStaffReady(true); return; }

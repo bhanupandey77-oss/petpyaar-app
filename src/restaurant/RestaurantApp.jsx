@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
-import { useRestaurants, useList, setStatus, ACTIVE } from '../lib/data.js';
+import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange } from '../lib/data.js';
+import { DocSheet, Statement } from '../components/Docs.jsx';
 import { patch, add } from '../lib/fb.js';
 import { UpiEditor, UpiQr, UpiButton } from '../components/Pay.jsx';
 import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotify, askNotifyPermission, compressImage, todayKey, dayKey, mapsPin } from '../lib/utils.js';
 import { getPosition } from '../lib/native.js';
 import MenuManager from './MenuManager.jsx';
+import Team from './Team.jsx';
 import { t, tr } from '../i18n/index.js';
 
 /* rings while there are un-accepted orders */
@@ -64,12 +66,14 @@ export default function RestaurantApp() {
         {tab === 'orders' && <RestOrders orders={orders} />}
         {tab === 'menu' && <MenuManager restId={rest.id} />}
         {tab === 'money' && <><Dues orders={orders} rest={rest} /><Earnings orders={orders} /></>}
+        {tab === 'team' && <Team rest={rest} orders={orders} />}
         {tab === 'shop' && <ShopSettings rest={rest} />}
       </div>
       <BottomNav value={tab} onChange={setTab} tabs={[
         { id: 'orders', icon: 'receipt', label: 'Orders', badge: newCount },
         { id: 'menu', icon: 'list', label: 'Menu' },
-        { id: 'money', icon: 'chart', label: 'Earnings' },
+        { id: 'money', icon: 'wallet', label: 'Hisab' },
+        { id: 'team', icon: 'bike', label: 'Delivery' },
         { id: 'shop', icon: 'store', label: 'Shop' },
       ]} />
     </div>
@@ -93,24 +97,28 @@ export function RestOrders({ orders, showRest }) {
       </div>
       {!nw.length && !cook.length && !ready.length && !out.length && <Empty icon="receipt" title="No live orders" text="New orders will ring loudly here. Keep the app open." />}
       {nw.length > 0 && <h3 className="board-h new">New orders</h3>}
-      {nw.map((o) => <OrderCard key={o.id} o={o} riders={config.riders || []} showRest={showRest} />)}
+      {nw.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
       {cook.length > 0 && <h3 className="board-h">Cooking</h3>}
-      {cook.map((o) => <OrderCard key={o.id} o={o} riders={config.riders || []} showRest={showRest} />)}
+      {cook.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
       {ready.length > 0 && <h3 className="board-h">Ready for pickup</h3>}
-      {ready.map((o) => <OrderCard key={o.id} o={o} riders={config.riders || []} showRest={showRest} />)}
+      {ready.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
       {out.length > 0 && <h3 className="board-h">Out for delivery</h3>}
-      {out.map((o) => <OrderCard key={o.id} o={o} riders={config.riders || []} showRest={showRest} />)}
+      {out.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
     </div>
   );
 }
 
-export function OrderCard({ o, riders, showRest, admin }) {
+export function OrderCard({ o, showRest, admin }) {
   const toast = useToast();
+  const shop = (useRestaurants() || []).find((r) => r.id === o.restaurantId);
+  const riders = shop?.riders || [];
   const [reject, setReject] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); } setBusy(false); };
-  const accept = (mins) => run(() => setStatus(o, 'preparing', { prepMins: mins, 'timeline.accepted': Date.now() }));
+  // accepting sends the order straight to the restaurant's delivery boy (auto-assigned when there is only one)
+  const accept = (mins) => run(() => setStatus(o, 'preparing', { prepMins: mins, 'timeline.accepted': Date.now(),
+    ...(riders.length === 1 && !o.riderPhone ? { riderPhone: riders[0].phone, riderName: riders[0].name } : {}) }));
   const assign = (phone) => { const r = riders.find((x) => x.phone === phone); return run(() => patch('orders', o.id, { riderPhone: phone || '', riderName: r?.name || '' })); };
   const age = Math.floor((Date.now() - o.createdMs) / 60000);
   return (
@@ -124,7 +132,7 @@ export function OrderCard({ o, riders, showRest, admin }) {
         {o.items.map((x) => <div key={x.id}><VegMark size={11} /> <b>{x.qty} ×</b> {x.name}</div>)}
       </div>
       {o.note && <div className="oc-note">{`“${o.note}”`}</div>}
-      {o.discount > 0 && <div className="tiny t-green">{`Coupon ${o.offerCode}: − ${rupee(o.discount)}`}{o.discountBy === 'restaurant' ? '' : ` (${t('paid by PetPyaar')})`}</div>}
+      {o.discount > 0 && <div className="tiny t-green">{`Coupon ${o.offerCode}: − ${rupee(o.discount)}`}{o.discountBy === 'restaurant' ? '' : ` (${t('paid by FoodGaon')})`}</div>}
       <div className="row between small">
         <span>{o.customerName} · <a href={tel(o.customerPhone)}>{plain(o.customerPhone)}</a></span>
         <b>{rupee(o.total)} <small className="muted">{o.payment === 'cod' ? 'Cash' : o.payment === 'upi_now' ? 'UPI (pay now)' : 'UPI on delivery'}</small></b>
@@ -178,64 +186,78 @@ export function OrderCard({ o, riders, showRest, admin }) {
   );
 }
 
-/* what the restaurant owes PetPyaar (commission + delivery − PetPyaar-funded coupons), paid by UPI */
-export const dueOf = (o) => Math.max(0, Math.round((Number(o.total || 0) - Number(o.payable || 0)) * 100) / 100);
+/* what the restaurant owes FoodGaon each week (GST 5% + commission − FoodGaon coupons), paid by UPI */
+export const dueOf = (o) => Math.max(0, Math.round((o.dues ?? (Number(o.total || 0) - Number(o.payable || 0))) * 100) / 100);
+const r2x = (n) => Math.round(n * 100) / 100;
+export function useCycles(orders, setts) {
+  if (!orders || !setts) return null;
+  const now = cycleOf(Date.now());
+  const map = {};
+  orders.filter((o) => o.status === 'delivered').forEach((o) => { const k = o.cycle || cycleOf(o.createdMs); (map[k] = map[k] || []).push(o); });
+  setts.forEach((x) => { if (x.cycle && !map[x.cycle]) map[x.cycle] = []; });
+  return Object.keys(map).sort().reverse().map((k) => {
+    const l = map[k]; const dues = r2x(l.reduce((a, o) => a + dueOf(o), 0));
+    const paid = r2x(setts.filter((x) => x.cycle === k && x.status !== 'rejected').reduce((a, x) => a + Number(x.amount || 0), 0));
+    const pending = setts.some((x) => x.cycle === k && x.status === 'claimed');
+    return { key: k, range: cycleRange(k), orders: l, dues, paid, bal: Math.max(0, r2x(dues - paid)), current: k === now, pending };
+  });
+}
 function Dues({ orders, rest }) {
   const { config } = useApp();
   const toast = useToast();
   const setts = useList('settlements', [['restaurantId', '==', rest.id]], [rest.id]);
-  const [open, setOpen] = useState(false);
+  const cycles = useCycles(orders, setts);
+  const [payFor, setPayFor] = useState(null);
+  const [view, setView] = useState(null);
   const [utr, setUtr] = useState('');
-  const [amt, setAmt] = useState('');
   const [busy, setBusy] = useState(false);
-  if (!orders || !setts) return null;
-  const del = orders.filter((o) => o.status === 'delivered');
-  const commission = del.reduce((a, o) => a + Number(o.commission || 0), 0);
-  const delivery = del.reduce((a, o) => a + Number(o.restDelivery || 0), 0);
-  const ppCoupons = del.filter((o) => o.discountBy === 'admin').reduce((a, o) => a + Number(o.discount || 0), 0);
-  const total = del.reduce((a, o) => a + dueOf(o), 0);
-  const sent = setts.filter((x) => x.status !== 'rejected').reduce((a, x) => a + Number(x.amount || 0), 0);
-  const due = Math.max(0, Math.round((total - sent) * 100) / 100);
-  const pay = Number(amt) > 0 ? Number(amt) : due;
+  if (!cycles) return null;
+  const owing = cycles.filter((c) => !c.current && c.bal > 0);
+  const totalBal = r2x(owing.reduce((a, c) => a + c.bal, 0));
+  const cur = cycles.find((c) => c.current);
   const record = async () => {
-    if (!(pay > 0)) return;
     setBusy(true);
     try {
-      await add('settlements', { restaurantId: rest.id, restaurantName: rest.name, amount: pay, utr: utr.trim(), status: 'claimed', createdMs: Date.now() });
-      toast(t('Payment recorded. PetPyaar will confirm it.')); setOpen(false); setUtr(''); setAmt('');
+      await add('settlements', { restaurantId: rest.id, restaurantName: rest.name, cycle: payFor.key, amount: payFor.bal, utr: utr.trim(), status: 'claimed', createdMs: Date.now() });
+      toast(t('Payment recorded. FoodGaon will confirm it.')); setPayFor(null); setUtr('');
     } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
-  const ref = `PP${rest.id.replace(/[^a-z0-9]/gi, '').slice(0, 10)}${Date.now().toString(36)}`;
+  const ref = (k) => `FG${rest.id.replace(/[^a-z0-9]/gi, '').slice(0, 8)}${k.replace(/-/g, '')}`;
   return (
     <div className="pad-x">
       <div className="card dues-card">
-        <div className="row between"><h4><Icon name="wallet" size={18} /> PetPyaar dues</h4>{due > 0 ? <b className="t-red">{rupee(due)}</b> : <b className="t-green">{t('All clear')} ✓</b>}</div>
-        <div className="bill small"><span>{`Commission (${del.length} orders)`}</span><span>{rupee(commission)}</span></div>
-        <div className="bill small"><span>Delivery charges</span><span>{rupee(delivery)}</span></div>
-        {ppCoupons > 0 && <div className="bill small t-green"><span>Coupons paid by PetPyaar</span><span>− {rupee(ppCoupons)}</span></div>}
-        <div className="bill small"><span>Already sent</span><span>− {rupee(sent)}</span></div>
-        <div className="bill total"><span>To send now</span><span>{rupee(due)}</span></div>
-        {due > 0 && <button className="btn primary block" onClick={() => setOpen(true)}><Icon name="upi" size={18} /> Pay PetPyaar by UPI</button>}
-        {setts.length > 0 && (
-          <details className="setts"><summary className="small">{`Payment history (${setts.length})`}</summary>
-            {[...setts].sort((a, b) => b.createdMs - a.createdMs).map((x) => (
-              <div key={x.id} className="bill small"><span>{fmtDateTime(x.createdMs)}{x.utr ? ` · ${x.utr}` : ''}</span><span>{rupee(x.amount)} <em className={'st-mini ' + x.status}>{x.status === 'confirmed' ? t('Confirmed') : x.status === 'rejected' ? t('Rejected') : t('Pending')}</em></span></div>
-            ))}
-          </details>
-        )}
+        <div className="row between"><h4><Icon name="wallet" size={18} /> FoodGaon dues</h4>{totalBal > 0 ? <b className="t-red">{rupee(totalBal)}</b> : <b className="t-green">{t('All clear')} ✓</b>}</div>
+        <p className="tiny muted">Every week (1-7, 8-14, 15-21, 22-28, 29-end) send FoodGaon the GST 5% + commission of delivered orders. Pay by the next day.</p>
+        {cur && <div className="cycle-now"><span>{`This week (${cur.range.label})`}</span><b>{rupee(cur.dues)}</b><small>{`${cur.orders.length} orders so far`}</small></div>}
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Pay PetPyaar">
-        {!config.upiId && !config.upiQr ? <p className="muted">PetPyaar has not added its UPI yet. Please call the admin.</p> : (
+      {cycles.map((c) => (
+        <div key={c.key} className={'card cycle-card' + (c.current ? ' now' : c.bal > 0 ? ' due' : ' ok')}>
+          <div className="row between">
+            <div><b>{c.range.label}</b><small className="muted">{`${c.orders.length} orders · sales ${rupee(r2x(c.orders.reduce((a, o) => a + Number(o.total || 0), 0)))}`}</small></div>
+            <em className={'st-mini ' + (c.current ? '' : c.bal > 0 ? (c.pending ? '' : 'rejected') : 'confirmed')}>{c.current ? t('Running') : c.bal > 0 ? (c.pending ? t('Pending check') : t('Due')) : t('Paid')}</em>
+          </div>
+          <div className="bill small"><span>To FoodGaon</span><span>{rupee(c.dues)}</span></div>
+          {c.paid > 0 && <div className="bill small"><span>Sent</span><span>− {rupee(c.paid)}</span></div>}
+          <div className="row gap">
+            <button className="btn ghost small grow" onClick={() => setView(c)}><Icon name="receipt" size={16} /> Statement / PDF</button>
+            {!c.current && c.bal > 0 && <button className="btn primary small grow" onClick={() => setPayFor(c)}><Icon name="upi" size={16} /> {`Pay ${rupee(c.bal)}`}</button>}
+          </div>
+        </div>
+      ))}
+      {!cycles.length && <p className="muted center small">No delivered orders yet</p>}
+      <Sheet open={!!payFor} onClose={() => setPayFor(null)} title="Pay FoodGaon">
+        {payFor && (!config.upiId && !config.upiQr ? <p className="muted">FoodGaon has not added its UPI yet. Please call the admin.</p> : (
           <>
-            <Field label="Amount ₹"><input className="input" inputMode="decimal" value={amt} placeholder={String(due)} onChange={(e) => setAmt(e.target.value.replace(/[^\d.]/g, ''))} /></Field>
-            <UpiButton upiId={config.upiId} upiName={config.upiName || 'PetPyaar'} amount={pay} note={`PetPyaar dues ${rest.name}`} refId={ref} label="Open UPI app" />
-            <UpiQr upiId={config.upiId} upiName={config.upiName || 'PetPyaar'} upiQr={config.upiQr} amount={pay} note={`PetPyaar dues ${rest.name}`} refId={ref} size={200} />
+            <p className="small">{`Week ${payFor.range.label}`}</p>
+            <UpiButton upiId={config.upiId} upiName={config.upiName || 'FoodGaon'} amount={payFor.bal} note={`FoodGaon dues ${payFor.range.label}`} refId={ref(payFor.key)} label="Open UPI app" />
+            <UpiQr upiId={config.upiId} upiName={config.upiName || 'FoodGaon'} upiQr={config.upiQr} amount={payFor.bal} note={`FoodGaon dues ${payFor.range.label}`} refId={ref(payFor.key)} size={200} />
             <Field label="UPI reference / UTR no. (optional)"><input className="input" value={utr} onChange={(e) => setUtr(e.target.value.replace(/[^\w]/g, '').slice(0, 24))} data-notr="" /></Field>
-            <button className="btn green block lg" disabled={busy || !(pay > 0)} onClick={record}><Icon name="check" size={18} /> {`I have paid ${rupee(pay)}`}</button>
+            <button className="btn green block lg" disabled={busy} onClick={record}><Icon name="check" size={18} /> {`I have paid ${rupee(payFor.bal)}`}</button>
           </>
-        )}
+        ))}
       </Sheet>
+      {view && <DocSheet open onClose={() => setView(null)} title="Weekly statement" fileName={`FoodGaon-${rest.id}-${view.key}.pdf`}><Statement rest={rest} cycle={view.key} orders={view.orders} setts={setts} config={config} /></DocSheet>}
     </div>
   );
 }
@@ -253,10 +275,10 @@ export function Earnings({ orders, title }) {
         {[[1, 'Today'], [7, '7 days'], [30, '30 days']].map(([v, l]) => <button key={v} className={range === v ? 'on' : ''} onClick={() => setRange(v)}>{l}</button>)}
       </div>
       <div className="money-grid">
-        <div className="mg big"><small>Food sales</small><b>{rupee(sum('itemTotal'))}</b><span>{`${list.length} orders delivered`}</span></div>
+        <div className="mg big"><small>Sales (incl. GST)</small><b>{rupee(sum('total'))}</b><span>{`${list.length} orders delivered`}</span></div>
         {sum('discount') > 0 && <div className="mg"><small>Your coupon discounts</small><b className="t-red">− {rupee(list.filter((o) => o.discountBy === 'restaurant').reduce((a, o) => a + Number(o.discount || 0), 0))}</b></div>}
-        <div className="mg"><small>PetPyaar fee</small><b className="t-red">− {rupee(sum('commission'))}</b></div>
-        <div className="mg"><small>Delivery cost</small><b className="t-red">− {rupee(sum('restDelivery'))}</b></div>
+        <div className="mg"><small>FoodGaon fee</small><b className="t-red">− {rupee(sum('commission'))}</b></div>
+        <div className="mg"><small>GST 5% (to FoodGaon)</small><b className="t-red">− {rupee(sum('gst'))}</b></div>
         <div className="mg big green"><small>Your earning</small><b>{rupee(sum('payable'))}</b></div>
       </div>
       <div className="card">
@@ -271,11 +293,11 @@ export function Earnings({ orders, title }) {
 
 function ShopSettings({ rest }) {
   const toast = useToast();
-  const [f, setF] = useState({ tagline: rest.tagline || '', address: rest.address || '', prepMins: rest.prepMins || 20, ownerPhone: rest.ownerPhone || '' });
+  const [f, setF] = useState({ tagline: rest.tagline || '', address: rest.address || '', prepMins: rest.prepMins || 20, ownerPhone: rest.ownerPhone || '', fssai: rest.fssai || '', gstin: rest.gstin || '', radiusKm: rest.radiusKm ?? 5, minOrder: rest.minOrder ?? 50, openTime: rest.openTime || '', closeTime: rest.closeTime || '' });
   const [busy, setBusy] = useState(false);
   const save = async (extra = {}) => {
     setBusy(true);
-    try { await patch('restaurants', rest.id, { ...f, prepMins: Number(f.prepMins) || 20, ...extra }); toast(t('Saved')); } catch { toast(t('Could not save'), 'err'); }
+    try { await patch('restaurants', rest.id, { ...f, prepMins: Number(f.prepMins) || 20, radiusKm: Number(f.radiusKm) || 5, minOrder: Number(f.minOrder) || 0, fssai: f.fssai.trim(), gstin: f.gstin.trim().toUpperCase(), ...extra }); toast(t('Saved')); } catch { toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
   const gps = async () => { try { const p = await getPosition(); await save({ lat: p.lat, lng: p.lng }); } catch (e) { toast(t(e.message), 'err'); } };
@@ -290,9 +312,21 @@ function ShopSettings({ rest }) {
           <Field label="Usual cooking time (min)"><input className="input" inputMode="numeric" value={f.prepMins} onChange={(e) => setF({ ...f, prepMins: e.target.value.replace(/\D/g, '') })} /></Field>
           <Field label="Shop phone"><input className="input" inputMode="numeric" maxLength={10} value={f.ownerPhone} onChange={(e) => setF({ ...f, ownerPhone: e.target.value.replace(/\D/g, '') })} /></Field>
         </div>
+        <div className="row gap">
+          <Field label="FSSAI licence no."><input className="input" inputMode="numeric" maxLength={14} value={f.fssai} onChange={(e) => setF({ ...f, fssai: e.target.value.replace(/\D/g, '') })} data-notr="" /></Field>
+          <Field label="GSTIN"><input className="input" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} data-notr="" /></Field>
+        </div>
+        <div className="row gap">
+          <Field label="Delivery area (km)"><input className="input" inputMode="decimal" value={f.radiusKm} onChange={(e) => setF({ ...f, radiusKm: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
+          <Field label="Minimum order ₹"><input className="input" inputMode="numeric" value={f.minOrder} onChange={(e) => setF({ ...f, minOrder: e.target.value.replace(/\D/g, '') })} /></Field>
+        </div>
+        <div className="row gap">
+          <Field label="Opens at"><input className="input" type="time" value={f.openTime} onChange={(e) => setF({ ...f, openTime: e.target.value })} /></Field>
+          <Field label="Closes at"><input className="input" type="time" value={f.closeTime} onChange={(e) => setF({ ...f, closeTime: e.target.value })} /></Field>
+        </div>
         <button className="btn primary block" disabled={busy} onClick={() => save()}>Save</button>
       </div>
-      <UpiEditor value={rest} title="Your UPI — customers pay you directly" hint="Customers' money comes straight into this account. PetPyaar does not hold your money."
+      <UpiEditor value={rest} title="Your UPI — customers pay you directly" hint="Customers' money comes straight into this account. FoodGaon does not hold your money."
         onSave={(v) => patch('restaurants', rest.id, v)} />
       <div className="card">
         <h4><Icon name="pin" size={18} /> Shop location on map</h4>

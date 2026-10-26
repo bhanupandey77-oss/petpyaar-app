@@ -116,7 +116,7 @@ export function MenuItem({ it, rest, showKcal, onView }) {
         <b className="mi-name">{it.name}</b>
         <div className="mi-price">{rupee(it.price)} <small className="muted">· {it.qty}</small></div>
         {showKcal && it.kcal > 0 && <span className="kcal"><Icon name="fire" size={12} /> {`~${it.kcal} kcal`}</span>}
-        <p className="mi-desc">{it.desc}</p>
+        {it.story ? <p className="mi-desc mi-story" data-notr="" lang="hi">{it.story}</p> : <p className="mi-desc">{it.desc}</p>}
       </div>
       <div className="mi-side">
         <button className="mi-img" onClick={onView}><Img src={it.img} alt="" /></button>
