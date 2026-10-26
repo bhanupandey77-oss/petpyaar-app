@@ -5,6 +5,7 @@ import { useCart, cartStore } from '../lib/data.js';
 import { rupee } from '../lib/utils.js';
 import { FloatingVeggies, KcalRing, flyToCart } from './Motion.jsx';
 import { t } from '../i18n/index.js';
+import { FavBtn } from '../customer/RestaurantPage.jsx';
 
 const SLIDE_MS = 3400;
 const TAGS = {
@@ -72,7 +73,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
           <button className="dv-nav r" onClick={() => setI((i + 1) % pics.length)} aria-label="Next photo" />
           <div className="dv-title">
             <div className="row gap"><VegMark size={15} />{it.bestseller && <span className="best-pill"><Icon name="star" size={11} fill="currentColor" stroke={0} /> Bestseller</span>}</div>
-            <h2>{it.name}</h2>
+            <div className="row gap"><h2 className="grow">{it.name}</h2><FavBtn id={it.id} big /></div>
             {rest && <small data-notr="">{rest.name}</small>}
           </div>
         </div>

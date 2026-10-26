@@ -136,3 +136,18 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
 export function setStatus(order, status, extra = {}) {
   return patch('orders', order.id, { status, [`timeline.${status}`]: Date.now(), ...extra });
 }
+
+/* ---------- favourite dishes ❤️ (saved on the customer's account, or on this phone when logged out) ---------- */
+let favUid = null; let favs = (() => { try { return JSON.parse(localStorage.getItem('pp_favs') || '[]'); } catch { return []; } })();
+const favSubs = new Set(); let favUnsub = null;
+const favEmit = () => { try { localStorage.setItem('pp_favs', JSON.stringify(favs)); } catch { /* ignore */ } favSubs.forEach((f) => f()); };
+export function bindFavs(uid) {
+  if (uid === favUid) return; favUid = uid; if (favUnsub) { favUnsub(); favUnsub = null; }
+  if (uid) favUnsub = watchDoc('customers', uid, (d) => { if (d && Array.isArray(d.favs)) { favs = d.favs; favEmit(); } else if (favs.length) put('customers', uid, { favs }).catch(() => {}); });
+}
+export const favStore = {
+  get: () => favs,
+  subscribe: (f) => { favSubs.add(f); return () => favSubs.delete(f); },
+  toggle(id) { favs = favs.includes(id) ? favs.filter((x) => x !== id) : [id, ...favs].slice(0, 100); favEmit(); if (favUid) put('customers', favUid, { favs }).catch(() => {}); return favs.includes(id); },
+};
+export const useFavs = () => useSyncExternalStore(favStore.subscribe, favStore.get);

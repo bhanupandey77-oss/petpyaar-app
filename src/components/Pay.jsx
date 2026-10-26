@@ -2,11 +2,41 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Icon, Field, useToast } from '../ui.jsx';
 import { compressImage, upiLink, rupee } from '../lib/utils.js';
-import { upiPay } from '../lib/native.js';
+import { upiPay, upiApps, isNative } from '../lib/native.js';
+import { LS } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 
 export const UPI_RE = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/;
 export const hasUpi = (x) => !!(x && (x.upiId || x.upiQr));
+
+/* UPI apps installed on this phone (with their own icons from the phone) */
+let APPS = null;
+export function useUpiApps() {
+  const [apps, setApps] = useState(APPS || []);
+  useEffect(() => { if (APPS) return; upiApps().then((a) => { APPS = a; setApps(a); }); }, []);
+  return apps;
+}
+const PREF = ['google', 'phonepe', 'paytm', 'bhim', 'amazon', 'cred', 'mobikwik', 'whatsapp'];
+const rank = (p) => { const i = PREF.findIndex((k) => p.includes(k)); return i < 0 ? 99 : i; };
+export const chosenApp = () => LS.get('pp_upi_pkg', '');
+
+/** row of UPI app icons — tap one to choose which app opens */
+export function UpiAppStrip({ value, onChange, compact }) {
+  const apps = [...useUpiApps()].sort((a, b) => rank(a.package) - rank(b.package));
+  if (!apps.length) {
+    return <div className="upi-strip generic"><span className="upi-badge">UPI</span><small>{isNative ? t('Any UPI app on your phone') : 'Google Pay · PhonePe · Paytm · BHIM'}</small></div>;
+  }
+  return (
+    <div className={'upi-strip' + (compact ? ' compact' : '')}>
+      {apps.slice(0, compact ? 5 : 8).map((a) => (
+        <button type="button" key={a.package} className={'upi-app' + (value === a.package ? ' on' : '')} onClick={(e) => { e.stopPropagation(); LS.set('pp_upi_pkg', a.package); onChange?.(a.package); }} title={a.label}>
+          {a.icon ? <img src={a.icon} alt="" /> : <span className="upi-badge">UPI</span>}
+          {!compact && <small data-notr="">{a.label}</small>}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** QR made from a UPI link (with amount) — falls back to an uploaded QR photo */
 export function UpiQr({ upiId, upiName, upiQr, amount, note, refId, size = 220 }) {
@@ -32,7 +62,7 @@ export function UpiQr({ upiId, upiName, upiQr, amount, note, refId, size = 220 }
 /** “Open UPI app” button */
 export function UpiButton({ upiId, upiName, amount, note, refId, label = 'Pay by UPI app', className = 'btn primary block lg', onDone }) {
   if (!upiId) return null;
-  const go = async () => { await upiPay(upiLink({ upiId, upiName, amount, note, ref: refId }), ''); onDone?.(); };
+  const go = async () => { await upiPay(upiLink({ upiId, upiName, amount, note, ref: refId }), chosenApp()); onDone?.(); };
   return <button type="button" className={className} onClick={go}><Icon name="upi" size={20} /> {t(label)}{amount > 0 ? ` · ${rupee(amount)}` : ''}</button>;
 }
 

@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Icon, Img, VegMark, Stepper, useToast, Sheet } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useRestaurants, useItems, useCart, cartStore } from '../lib/data.js';
+import { useRestaurants, useItems, useCart, cartStore, useFavs, favStore } from '../lib/data.js';
 import { CATEGORIES } from '../data/menu.js';
 import { rupee } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import DishView from '../components/DishView.jsx';
+import { useReviews, ratingOf, ReviewList } from '../components/Reviews.jsx';
 import { useOffers, forRestaurant, offerLabel, offerTerms } from '../lib/offers.js';
 
 export default function RestaurantPage({ id, nav }) {
@@ -16,6 +17,8 @@ export default function RestaurantPage({ id, nav }) {
   const [view, setView] = useState(null);
   const items = all.filter((i) => i.restaurantId === id);
   const offers = forRestaurant(useOffers(), id);
+  const reviews = useReviews(id);
+  const [showRev, setShowRev] = useState(false);
   const groups = useMemo(() => {
     const list = items.filter((i) => !q || i.name.toLowerCase().includes(q.toLowerCase()));
     const best = list.filter((i) => i.bestseller);
@@ -40,7 +43,7 @@ export default function RestaurantPage({ id, nav }) {
         <h1 data-notr="">{rest.name}</h1>
         <p className="muted">{rest.tagline}</p>
         <div className="rp-stats">
-          <span className="rating big"><Icon name="star" size={14} fill="#fff" stroke={0} />{Number(rest.rating || 4.2).toFixed(1)}</span>
+          <button className="rating big" onClick={() => setShowRev(true)}><Icon name="star" size={14} fill="#fff" stroke={0} />{ratingOf(reviews, rest.rating).avg.toFixed(1)}{ratingOf(reviews).n > 0 && <small>{` (${ratingOf(reviews).n})`}</small>}</button>
           <span><Icon name="clock" size={16} /> {`${(rest.prepMins || 20) + 10}-${(rest.prepMins || 20) + 20} mins`}</span>
           <span><VegMark size={13} /> Pure veg</span>
         </div>
@@ -71,6 +74,13 @@ export default function RestaurantPage({ id, nav }) {
         </section>
       ))}
       {!groups.length && <p className="muted center pad">No dishes found</p>}
+      {(reviews || []).some((r) => r.rating) && (
+        <section className="menu-sec">
+          <h3>What people say <small>{(reviews || []).filter((r) => r.rating).length}</small></h3>
+          <ReviewList list={reviews} max={showRev ? 50 : 3} showItems={false} />
+          {!showRev && (reviews || []).filter((r) => r.rating).length > 3 && <button className="link" onClick={() => setShowRev(true)}>See all reviews</button>}
+        </section>
+      )}
       <p className="kcal-note"><Icon name="info" size={14} /> Calories are approximate, per serving shown. Eat mindfully.</p>
 
       {view && <DishView it={view} rest={rest} showKcal={config.showCalories} onClose={() => setView(null)} />}
@@ -120,8 +130,21 @@ export function MenuItem({ it, rest, showKcal, onView }) {
       </div>
       <div className="mi-side">
         <button className="mi-img" onClick={onView}><Img src={it.img} alt="" /></button>
+        <FavBtn id={it.id} />
         {off ? <span className="soldout">Sold out</span> : <Stepper qty={qty} onAdd={add} onSub={() => cartStore.sub(it.id)} />}
       </div>
     </div>
+  );
+}
+
+export function FavBtn({ id, big }) {
+  const favs = useFavs();
+  const on = favs.includes(id);
+  const [pop, setPop] = React.useState(0);
+  return (
+    <button className={'fav-btn' + (on ? ' on' : '') + (big ? ' big' : '')} aria-label={on ? 'Remove from favourites' : 'Add to favourites'}
+      onClick={(e) => { e.stopPropagation(); favStore.toggle(id); setPop(Date.now()); }}>
+      <Icon key={pop} name="heart" size={big ? 22 : 16} fill={on ? '#e8461a' : 'none'} stroke={on ? 0 : 2} />
+    </button>
   );
 }

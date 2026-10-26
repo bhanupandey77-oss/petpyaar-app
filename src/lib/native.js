@@ -75,5 +75,8 @@ const UpiPay = registerPlugin('UpiPay');
 export async function upiApps() { if (!isNative) return []; try { return (await UpiPay.apps()).apps || []; } catch { return []; } }
 export async function upiPay(url, pkg) {
   if (!isNative) { location.href = url; return true; }
-  try { await UpiPay.pay({ url, package: pkg || '' }); return true; } catch { return false; }
+  try { await UpiPay.pay({ url, package: pkg || '' }); return true; } catch {
+    if (pkg) { try { await UpiPay.pay({ url, package: '' }); return true; } catch { /* no UPI app */ } }
+    return false;
+  }
 }

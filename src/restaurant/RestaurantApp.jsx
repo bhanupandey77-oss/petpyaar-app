@@ -9,6 +9,8 @@ import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotif
 import { getPosition } from '../lib/native.js';
 import MenuManager from './MenuManager.jsx';
 import Team from './Team.jsx';
+import DailyReport from './DailyReport.jsx';
+import { useReviews } from '../components/Reviews.jsx';
 import PhotoPick from '../components/PhotoPick.jsx';
 import { t, tr } from '../i18n/index.js';
 
@@ -39,6 +41,7 @@ export default function RestaurantApp() {
   const rest = (useRestaurants() || []).find((r) => r.id === restId);
   const orders = useList('orders', restId ? [['restaurantId', '==', restId]] : null, [restId]);
   const [tab, setTab] = useState('orders');
+  const reviews = useReviews(restId);
   const toast = useToast();
   const newCount = useNewOrderAlert(orders);
   useEffect(() => { askNotifyPermission(); const u = () => unlockAudio(); window.addEventListener('pointerdown', u, { once: true }); }, []);
@@ -66,7 +69,7 @@ export default function RestaurantApp() {
       <div className="page-anim" key={tab}>
         {tab === 'orders' && <RestOrders orders={orders} />}
         {tab === 'menu' && <MenuManager restId={rest.id} />}
-        {tab === 'money' && <><Dues orders={orders} rest={rest} /><Earnings orders={orders} /></>}
+        {tab === 'money' && <><DailyReport orders={orders} rest={rest} reviews={reviews} /><Dues orders={orders} rest={rest} /><Earnings orders={orders} /></>}
         {tab === 'team' && <Team rest={rest} orders={orders} />}
         {tab === 'shop' && <ShopSettings rest={rest} />}
       </div>

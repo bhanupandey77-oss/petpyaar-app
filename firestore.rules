@@ -81,7 +81,7 @@ service cloud.firestore {
                     || (isRider() && (resource.data.riderPhone == ph()
                          || (resource.data.riderPhone == '' && resource.data.restaurantId == riderOf() && request.resource.data.riderPhone == ph())))
                     || (signedIn() && resource.data.customerUid == request.auth.uid
-                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs'])
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs', 'riderRating', 'reviewTags', 'reviewMs'])
                          && (request.resource.data.status == resource.data.status
                              || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')));
       allow delete: if isAdmin();
@@ -91,6 +91,13 @@ service cloud.firestore {
                     && request.resource.data.amount is number && request.resource.data.amount > 0;
       allow read: if isAdmin() || ownsRest(resource.data.restaurantId);
       allow update, delete: if isAdmin();
+    }
+    match /reviews/{orderId} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.resource.data.customerUid == request.auth.uid
+                    && get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
+                    && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+      allow delete: if isAdmin();
     }
     match /riderLoc/{phone} {
       allow read: if signedIn();

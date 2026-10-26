@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { hasUpi } from '../components/Pay.jsx';
+import { hasUpi, UpiAppStrip, chosenApp } from '../components/Pay.jsx';
 import { Sheet } from '../ui.jsx';
 import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '../lib/offers.js';
 import { LS } from '../lib/utils.js';
@@ -77,7 +77,7 @@ export default function CartPage({ nav, onPlaced }) {
       LS.set('pp_pay', pay);
       if (pay === 'upi_now' && rest.upiId) {
         // money goes straight to the restaurant's own UPI
-        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: bill.total, note: `FoodGaon order ${rest.name}`, ref: id }), '');
+        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: bill.total, note: `FoodGaon order ${rest.name}`, ref: id }), chosenApp());
       }
       cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
@@ -146,9 +146,9 @@ export default function CartPage({ nav, onPlaced }) {
 
         <div className="card">
           <h4>Payment</h4>
-          {upiNow && <PayOpt id="upi_now" cur={pay} set={setPay} icon="upi" title="Pay now by UPI" sub="Opens GPay / PhonePe / Paytm — money goes directly to the restaurant" tag="Fastest" />}
-          {upiDel && <PayOpt id="upi_rider" cur={pay} set={setPay} icon="upi" title="Pay on delivery by UPI" sub="Scan the restaurant's QR when food arrives" />}
-          {cod && <PayOpt id="cod" cur={pay} set={setPay} icon="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
+          {upiNow && <PayOpt id="upi_now" cur={pay} set={setPay} art="upi" title="Pay now — any UPI app" sub="Your UPI app opens right away · money goes straight to the restaurant" tag="Fastest" />}
+          {upiDel && <PayOpt id="upi_rider" cur={pay} set={setPay} art="upi" title="Pay on delivery — any UPI app" sub="When food arrives, tap Pay — your UPI app opens (or scan the QR)" />}
+          {cod && <PayOpt id="cod" cur={pay} set={setPay} art="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
           {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added UPI yet, so only cash is available.</p>}
           <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. FoodGaon never holds your money.</p>
         </div>
@@ -194,12 +194,20 @@ export default function CartPage({ nav, onPlaced }) {
 
 const kcalHint = (k) => (k <= 600 ? 'A light meal, nicely balanced.' : k <= 1200 ? 'A filling meal — great to share or for one hungry person.' : 'A big feast! Perfect for sharing with family.');
 
-function PayOpt({ id, cur, set, icon, title, sub, tag }) {
+function PayOpt({ id, cur, set, art, title, sub, tag }) {
+  const [pkg, setPkg] = useState(chosenApp());
+  const on = cur === id;
   return (
-    <button className={'pay-opt' + (cur === id ? ' on' : '')} onClick={() => set(id)}>
-      <Icon name={icon} size={22} />
-      <span className="grow"><b>{title}{tag && <em className="pay-tag">{tag}</em>}</b><small>{sub}</small></span>
-      <i className="radio" />
-    </button>
+    <div className={'pay-opt2' + (on ? ' on' : '')} onClick={() => set(id)} role="radio" aria-checked={on} tabIndex={0}>
+      <div className="row gap">
+        <span className={'pay-art ' + art}>{art === 'cash' ? <CashArt /> : <span className="upi-badge big">UPI</span>}</span>
+        <span className="grow"><b>{title}{tag && <em className="pay-tag">{tag}</em>}</b><small>{sub}</small></span>
+        <i className="radio" />
+      </div>
+      {art === 'upi' && <UpiAppStrip value={on ? pkg : ''} onChange={(p) => { setPkg(p); set(id); }} compact={!on} />}
+    </div>
   );
 }
+const CashArt = () => (
+  <svg width="38" height="38" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="12" width="38" height="22" rx="4" fill="#2e9b57" /><rect x="7" y="16" width="38" height="22" rx="4" fill="#3fb86c" stroke="#fff" strokeWidth="1.5" /><circle cx="26" cy="27" r="6" fill="#e9f8ee" /><text x="26" y="31" textAnchor="middle" fontSize="9" fontWeight="800" fill="#2e9b57">₹</text></svg>
+);

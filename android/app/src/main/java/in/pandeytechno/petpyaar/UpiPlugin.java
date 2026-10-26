@@ -32,11 +32,24 @@ public class UpiPlugin extends Plugin {
             JSObject o = new JSObject();
             o.put("package", pkg);
             o.put("label", String.valueOf(ri.loadLabel(pm)));
+            try { o.put("icon", iconPng(ri.loadIcon(pm))); } catch (Exception ignore) { }
             arr.put(o);
         }
         JSObject ret = new JSObject();
         ret.put("apps", arr);
         call.resolve(ret);
+    }
+
+    /** the app's own launcher icon (from the phone) as a small PNG data URL */
+    private static String iconPng(android.graphics.drawable.Drawable d) {
+        int size = 96;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas c = new android.graphics.Canvas(bmp);
+        d.setBounds(0, 0, size, size);
+        d.draw(c);
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+        return "data:image/png;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP);
     }
 
     @PluginMethod

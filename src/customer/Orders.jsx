@@ -7,8 +7,9 @@ import { rupee, fmtDateTime, fmtTime, tel, plain, km, ms, systemNotify } from '.
 import MapView from '../components/MapView.jsx';
 import { TopBar } from './RestaurantPage.jsx';
 import { t, tr } from '../i18n/index.js';
-import { UpiQr, UpiButton } from '../components/Pay.jsx';
+import { UpiQr, UpiButton, UpiAppStrip } from '../components/Pay.jsx';
 import { DocSheet, Invoice, CustomerStatement } from '../components/Docs.jsx';
+import { ReviewBox } from '../components/Reviews.jsx';
 
 const SORTS = { new: 'Newest first', old: 'Oldest first', high: 'Amount: high to low', low: 'Amount: low to high', rest: 'Restaurant A–Z' };
 export function OrdersList({ orders, nav }) {
@@ -130,7 +131,7 @@ export function TrackOrder({ id, fresh, nav }) {
   const [party, setParty] = useState(!!fresh);
   const [cancel, setCancel] = useState(false);
   const [bill, setBill] = useState(false);
-  const { config } = useApp();
+  const { config, user } = useApp();
   const last = useRef(null);
   useEffect(() => { if (party) { const x = setTimeout(() => setParty(false), 2600); return () => clearTimeout(x); } }, [party]);
   useEffect(() => {
@@ -191,13 +192,15 @@ export function TrackOrder({ id, fresh, nav }) {
 
         <PayBox o={o} />
 
-        {o.status === 'delivered' && !o.rating && (
-          <div className="card center">
-            <b>How was your food?</b>
-            <div className="stars">{[1, 2, 3, 4, 5].map((n) => <button key={n} onClick={() => rate(n)} aria-label={`${n} stars`}><Icon name="star" size={32} fill="#ffb627" stroke={0} /></button>)}</div>
+        {o.status === 'delivered' && !o.rating && <ReviewBox o={o} user={user} />}
+        {o.rating > 0 && (
+          <div className="card review-done" data-notr="" lang="hi">
+            <span className="rev-stars big">{'★'.repeat(o.rating)}<i>{'★'.repeat(5 - o.rating)}</i></span>
+            {o.review && <p>“{o.review}”</p>}
+            {(o.reviewTags || []).length > 0 && <div className="rev-mini">{o.reviewTags.map((tg) => <span key={tg}>{tg}</span>)}</div>}
+            <small className="muted">आपकी समीक्षा के लिए धन्यवाद 🙏</small>
           </div>
         )}
-        {o.rating > 0 && <p className="center muted small">{`You rated ${o.rating} ★ — thank you!`}</p>}
 
         <div className="card">
           <h4>Order details</h4>
@@ -239,6 +242,7 @@ function PayBox({ o }) {
     <div className="card pay-box">
       <b>Complete your UPI payment</b>
       <p className="tiny muted">{`Pay ${rupee(o.total)} directly to ${o.restaurantName}`}</p>
+      <UpiAppStrip />
       <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Open UPI app" />
       <div className="row gap"><button className="btn ghost grow small" onClick={() => setShow(!show)}>{show ? 'Hide QR' : 'Show QR'}</button><button className="btn green grow small" onClick={claim}><Icon name="check" size={16} /> I have paid</button></div>
       {show && <UpiQr upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} />}
@@ -249,6 +253,7 @@ function PayBox({ o }) {
     <div className="card pay-box">
       <b>Pay by UPI when your food arrives</b>
       <p className="tiny muted">{`${rupee(o.total)} goes directly to ${o.restaurantName}. The delivery partner will also show the QR.`}</p>
+      {o.status === 'picked' && <UpiAppStrip />}
       {o.status === 'picked' && <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Pay now" />}
       {o.status === 'picked' && <button className="btn green block small" onClick={claim}><Icon name="check" size={16} /> I have paid</button>}
     </div>

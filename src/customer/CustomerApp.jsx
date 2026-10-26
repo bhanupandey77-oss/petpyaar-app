@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BottomNav, Icon } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useCart, cartTotals, useList, ACTIVE } from '../lib/data.js';
+import { useCart, cartTotals, useList, ACTIVE, bindFavs } from '../lib/data.js';
 import { rupee } from '../lib/utils.js';
 import Home from './Home.jsx';
 import SearchPage from './SearchPage.jsx';
@@ -18,6 +18,7 @@ export default function CustomerApp() {
   const cart = useCart();
   const { count, total } = cartTotals(cart);
   const myOrders = useList('orders', user ? [['customerUid', '==', user.uid]] : null, [user?.uid]);
+  useEffect(() => { bindFavs(user?.uid || null); }, [user?.uid]);
   const active = (myOrders || []).filter((o) => ACTIVE.includes(o.status)).sort((a, b) => b.createdMs - a.createdMs);
 
   const top = stack[stack.length - 1];

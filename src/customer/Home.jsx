@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Img, VegMark, Wordmark, Logo, Stepper, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useRestaurants, useItems, useBanners, useCart, cartStore } from '../lib/data.js';
+import { useRestaurants, useItems, useBanners, useCart, cartStore, useFavs } from '../lib/data.js';
 import { CATEGORIES } from '../data/menu.js';
 import { rupee, LS } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
@@ -20,6 +20,8 @@ export default function Home({ nav }) {
   const name = (user?.displayName || '').split(' ')[0];
   const [view, setView] = useState(null);
   const offers = (useOffers() || []).filter(isLive);
+  const favs = useFavs();
+  const favItems = favs.map((id) => (items || []).find((i) => i.id === id)).filter(Boolean).slice(0, 12);
   const best = (items || []).filter((i) => i.bestseller && i.available !== false && (rests || []).find((r) => r.id === i.restaurantId)?.open !== false).slice(0, 10);
 
   return (
@@ -76,6 +78,15 @@ export default function Home({ nav }) {
           ))}
         </div>
       </Reveal>
+
+      {favItems.length > 0 && (
+        <Reveal as="section" className="sec">
+          <h2 className="sec-title"><Icon name="heart" size={20} fill="#e8461a" stroke={0} /> Your favourites</h2>
+          <div className="best-row">
+            {favItems.map((it) => <BestCard key={it.id} it={it} rest={(rests || []).find((r) => r.id === it.restaurantId)} onView={() => setView(it)} showKcal={config.showCalories} />)}
+          </div>
+        </Reveal>
+      )}
 
       {best.length > 0 && (
         <Reveal as="section" className="sec">
