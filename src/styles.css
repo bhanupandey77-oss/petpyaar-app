@@ -804,3 +804,4 @@ textarea.input { resize: vertical; }
 .sel-bar { position: sticky; top: 0; z-index: 5; background: #fff; border: 1.5px solid var(--brand); border-radius: 14px; padding: 8px 10px; margin: 6px 0 10px; box-shadow: var(--shadow); }
 .mm-check { width: 20px; height: 20px; accent-color: var(--brand); flex: none; }
 .mm-row.picked { background: var(--brand-soft); border-radius: 12px; }
+body.noscroll .cart-bar, body.noscroll .live-bar { display: none; }
