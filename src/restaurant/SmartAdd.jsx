@@ -6,6 +6,7 @@ import { STORY } from '../data/stories.js';
 import { DICT } from '../i18n/dict.js';
 import { rupee } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
+import { readMenuWithAI } from '../lib/menuAi.js';
 
 /* ------------------------------------------------------------------
    "AI se dish jodo": read a menu-card photo (on-device OCR, Hindi + English)
@@ -104,23 +105,32 @@ export default function SmartAdd({ open, onClose, restId }) {
 
   const prepare = (list) => {
     if (!list.length) { toast(t('No dish names found. Try a clearer photo or type the list.'), 'err'); return; }
-    setRows(list.slice(0, 40).map((x, i) => {
-      const m = match(lib, x.name);
-      const cat = m?.cat || guessCat(x.name);
-      return { id: i, on: true, name: x.name, price: x.price || m?.price || '', m, cat };
+    setRows(list.slice(0, 80).map((x, i) => {
+      const m = (x.photoKey && lib.find((d) => d.key === x.photoKey)) || match(lib, x.name);
+      const cat = x.cat || m?.cat || guessCat(x.name);
+      return { id: i, on: x.veg !== false, name: x.name, price: x.price || m?.price || '', m, cat, kcal: x.kcal, qty: x.qty, desc: x.desc, story: x.story, nonVeg: x.veg === false };
     }));
   };
+  const ocrFallback = async (file) => {
+    const { createWorker } = await import('tesseract.js');
+    const worker = await createWorker(['hin', 'eng'], 1, { logger: (m) => m.progress != null && setOcr({ pct: Math.round(m.progress * 100), msg: m.status, step: 2 }) });
+    const { data } = await worker.recognize(file);
+    await worker.terminate();
+    return parseLines(data.text);
+  };
   const readPhoto = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setOcr({ pct: 0, msg: 'Starting…' });
+    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+    setOcr({ pct: 15, msg: 'Sending photo to AI…', step: 1 });
+    const tick = setInterval(() => setOcr((o) => (o && o.step === 1 ? { ...o, pct: Math.min(90, o.pct + 6), msg: 'AI is reading dish names & prices…' } : o)), 700);
     try {
-      const { createWorker } = await import('tesseract.js');
-      const worker = await createWorker(['hin', 'eng'], 1, { logger: (m) => m.progress != null && setOcr({ pct: Math.round(m.progress * 100), msg: m.status }) });
-      const { data } = await worker.recognize(file);
-      await worker.terminate();
-      setOcr(null);
-      prepare(parseLines(data.text));
-    } catch (er) { console.warn(er); setOcr(null); toast(t('Could not read the photo. Check internet and try again.'), 'err'); }
+      const list = await readMenuWithAI(file, lib);
+      clearInterval(tick); setOcr(null);
+      prepare(list);
+    } catch (er) {
+      clearInterval(tick); console.warn(er);
+      setOcr({ pct: 0, msg: 'Trying offline reading…', step: 2 });
+      try { const l = await ocrFallback(file); setOcr(null); prepare(l); } catch (er2) { console.warn(er2); setOcr(null); toast(t('Could not read the photo. Check internet and try again.'), 'err'); }
+    }
   };
   const go = async () => {
     const list = rows.filter((r) => r.on && r.name.trim() && Number(r.price) > 0);
@@ -133,7 +143,7 @@ export default function SmartAdd({ open, onClose, restId }) {
       const key = m?.key; const catImg = CATEGORIES.find((c) => c.id === r.cat)?.img || ''; const img = m ? m.img : catImg;
       ops.push(['set', 'items', `${restId}--${(key || 'd')}-${Date.now().toString(36)}${r.id}`, {
         restaurantId: restId, name: r.name.trim(), price: Number(r.price), cat: r.cat, veg: true, available: true, bestseller: false, sort: 60 + r.id,
-        kcal: m?.kcal || g.kcal, qty: m?.qty || g.qty, desc: m?.desc || '', story: (key && STORY[key]) || m?.story || g.story,
+        kcal: r.kcal || m?.kcal || g.kcal, qty: r.qty || m?.qty || g.qty, desc: r.desc || m?.desc || '', story: r.story || (key && STORY[key]) || m?.story || g.story,
         img: img || '', gallery: m?.gallery || [img].filter(Boolean), aiAdded: true,
       }]);
     }
@@ -170,11 +180,12 @@ export default function SmartAdd({ open, onClose, restId }) {
           <p className="small">{`${rows.length} dishes found — check names & prices, untick what you don't want.`}</p>
           {rows.map((r) => (
             <div key={r.id} className={'ai-row' + (r.on ? '' : ' off')}>
-              <input type="checkbox" checked={r.on} onChange={(e) => setRows(rows.map((x) => (x.id === r.id ? { ...x, on: e.target.checked } : x)))} />
+              <input type="checkbox" disabled={r.nonVeg} checked={r.on} onChange={(e) => setRows(rows.map((x) => (x.id === r.id ? { ...x, on: e.target.checked } : x)))} />
               <Img src={r.m?.img || CATEGORIES.find((c) => c.id === r.cat)?.img} alt="" className="ai-thumb" />
               <div className="grow">
                 <input className="input slim" value={r.name} onChange={(e) => setRows(rows.map((x) => (x.id === r.id ? { ...x, name: e.target.value, m: match(lib, e.target.value) } : x)))} data-notr="" />
-                <small className={r.m ? 't-green' : 'muted'}>{r.m ? `✓ ${t('Matched')}: ${r.m.name}` : t('New dish — category photo will be used')}</small>
+                <small className={r.nonVeg ? 't-red' : r.m ? 't-green' : 'muted'}>{r.nonVeg ? t('Non-veg — not allowed on FoodGaon') : r.m ? `✓ ${t('Photo')}: ${r.m.name}` : t('New dish — category photo will be used')}</small>
+                {r.story && <small className="mi-story" data-notr="" lang="hi">{r.story}</small>}
               </div>
               <input className="input slim price" inputMode="numeric" value={r.price} placeholder="₹" onChange={(e) => setRows(rows.map((x) => (x.id === r.id ? { ...x, price: e.target.value.replace(/\D/g, '') } : x)))} />
             </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icon, Toggle, Sheet, Field, useToast, Img, VegMark, Confirm } from '../ui.jsx';
 import { useItems } from '../lib/data.js';
-import { put, patch, remove } from '../lib/fb.js';
+import { put, patch, remove, bulk } from '../lib/fb.js';
 import { CATEGORIES } from '../data/menu.js';
 import { rupee, compressImage } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
@@ -14,7 +14,22 @@ export default function MenuManager({ restId }) {
   const [edit, setEdit] = useState(null);
   const [q, setQ] = useState('');
   const [ai, setAi] = useState(false);
+  const [sel, setSel] = useState(null); // null = normal mode, Set = selecting
+  const [askDel, setAskDel] = useState(false);
+  const [busy, setBusy] = useState(false);
   const list = items.filter((i) => !q || i.name.toLowerCase().includes(q.toLowerCase()));
+  const toggleSel = (id) => { const n = new Set(sel); if (n.has(id)) n.delete(id); else n.add(id); setSel(n); };
+  const allSel = sel && list.length > 0 && list.every((i) => sel.has(i.id));
+  const runBulk = async (kind) => {
+    const ids = [...sel]; if (!ids.length) return;
+    setBusy(true);
+    try {
+      if (kind === 'del') await bulk(ids.map((id) => ['del', 'items', id]));
+      else await bulk(ids.map((id) => ['update', 'items', id, { available: kind === 'on' }]));
+      toast(kind === 'del' ? t('{} dishes deleted').replace('{}', ids.length) : t('Saved')); setSel(null);
+    } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
+    setBusy(false); setAskDel(false);
+  };
   const avail = async (it, v) => { try { await patch('items', it.id, { available: v }); } catch { toast(t('Could not save'), 'err'); } };
   return (
     <div className="pad-x">
@@ -23,11 +38,25 @@ export default function MenuManager({ restId }) {
         <button className="btn ghost" onClick={() => setEdit({})}><Icon name="plus" size={18} /> Add</button>
       </div>
       <button className="ai-cta" onClick={() => setAi(true)}><span className="ai-spark">✨</span><span className="grow"><b>Add dishes with AI</b><small>Click a photo of your menu card or type dish names — photos, calories & details fill in by themselves</small></span><Icon name="right" size={18} /></button>
-      <p className="tiny muted">{`${items.length} dishes · ${items.filter((i) => i.available === false).length} sold out`} — switch off a dish when it runs out.</p>
+      <div className="row between">
+        <p className="tiny muted">{`${items.length} dishes · ${items.filter((i) => i.available === false).length} sold out`}</p>
+        {sel ? <button className="link small" onClick={() => setSel(null)}>Cancel</button> : <button className="btn small ghost" onClick={() => setSel(new Set())}><Icon name="check" size={14} /> Select</button>}
+      </div>
+      {sel && (
+        <div className="sel-bar">
+          <label className="check-row"><input type="checkbox" checked={allSel} onChange={(e) => setSel(e.target.checked ? new Set(list.map((i) => i.id)) : new Set())} /> {`All (${sel.size} selected)`}</label>
+          <div className="row gap wrap">
+            <button className="btn small ghost" disabled={!sel.size || busy} onClick={() => runBulk('off')}>Sold out</button>
+            <button className="btn small ghost" disabled={!sel.size || busy} onClick={() => runBulk('on')}>In stock</button>
+            <button className="btn small danger" disabled={!sel.size || busy} onClick={() => setAskDel(true)}><Icon name="trash" size={14} /> {`Delete (${sel.size})`}</button>
+          </div>
+        </div>
+      )}
       {list.map((it) => (
-        <div key={it.id} className={'mm-row' + (it.available === false ? ' off' : '')}>
+        <div key={it.id} className={'mm-row' + (it.available === false ? ' off' : '') + (sel?.has(it.id) ? ' picked' : '')}>
+          {sel && <input type="checkbox" className="mm-check" checked={sel.has(it.id)} onChange={() => toggleSel(it.id)} />}
           <Img src={it.img} alt="" className="mm-img" />
-          <div className="grow" onClick={() => setEdit(it)}>
+          <div className="grow" onClick={() => (sel ? toggleSel(it.id) : setEdit(it))}>
             <b>{it.name}</b>
             <small className="muted">{rupee(it.price)} · {it.qty}{it.kcal ? ` · ~${it.kcal} kcal` : ''}{it.aiAdded ? ' · ✨ AI' : ''}</small>
           </div>
@@ -36,6 +65,7 @@ export default function MenuManager({ restId }) {
       ))}
       <ItemEditor open={!!edit} item={edit} restId={restId} onClose={() => setEdit(null)} />
       <SmartAdd open={ai} restId={restId} onClose={() => setAi(false)} />
+      <Confirm open={askDel} onClose={() => setAskDel(false)} danger title={`Delete ${sel?.size || 0} dishes permanently?`} text="They will be removed from your menu. This cannot be undone." okText="Delete" onOk={() => runBulk('del')} />
     </div>
   );
 }

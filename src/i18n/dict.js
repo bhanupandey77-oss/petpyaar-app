@@ -939,3 +939,12 @@ DICT.push(
   ['No delivered orders on this day', 'इस दिन कोई ऑर्डर डिलीवर नहीं हुआ', 'ई दिन कउनो ऑर्डर डिलीवर नाहीं भवा'], ['{} rating from {} reviews', '{} रेटिंग, {} समीक्षाओं से', '{} रेटिंग, {} समीक्षा से'], ['Customer reviews', 'ग्राहकों की समीक्षाएँ', 'ग्राहकन क समीक्षा'], ['Copied', 'कॉपी हो गया', 'कॉपी होइ गवा'],
   ['Your favourites', 'आपकी पसंदीदा डिश', 'आपन पसंदीदा डिस'], ['Add to favourites', 'पसंदीदा में जोड़ें', 'पसंदीदा मा जोड़ा'], ['Remove from favourites', 'पसंदीदा से हटाएँ', 'पसंदीदा से हटावा'],
 );
+DICT.push(
+  ['Select', 'चुनें', 'चुना'], ['All ({} selected)', 'सभी ({} चुनी गईं)', 'सब ({} चुनी)'], ['Sold out', 'ख़त्म', 'खतम'], ['In stock', 'उपलब्ध', 'मिलत है'], ['Delete ({})', 'हटाएँ ({})', 'हटावा ({})'],
+  ['Delete {} dishes permanently?', '{} डिश हमेशा के लिए हटाएँ?', '{} डिस हमेसा बदे हटाई?'], ['They will be removed from your menu. This cannot be undone.', 'ये आपके मेन्यू से हट जाएँगी। यह वापस नहीं होगा।', 'ई आपन मेन्यू से हटि जइहैं। ई वापस नाहीं होई।'],
+  ['{} dishes deleted', '{} डिश हटा दी गईं', '{} डिस हटाय दिहिन'], ['Cancel', 'रद्द करें', 'रद्द करा'],
+  ['This restaurant has not added its UPI yet. Please choose cash.', 'इस रेस्टोरेंट ने अभी UPI नहीं जोड़ा है। कृपया नकद चुनें।', 'ई रेस्टोरेंट अबहीं UPI नाहीं जोड़िस। नगद चुना।'],
+  ['This restaurant has not added its UPI yet — UPI options will open as soon as it does. Cash on delivery works now.', 'इस रेस्टोरेंट ने अभी UPI नहीं जोड़ा — जुड़ते ही UPI विकल्प खुल जाएँगे। अभी नकद भुगतान चालू है।', 'ई रेस्टोरेंट अबहीं UPI नाहीं जोड़िस — जुड़तै UPI विकल्प खुलि जइहैं। अबहीं नगद चालू बा।'],
+  ['Sending photo to AI…', 'फ़ोटो AI को भेजी जा रही है…', 'फोटो AI का भेजी जात है…'], ['AI is reading dish names & prices…', 'AI डिश के नाम और दाम पढ़ रहा है…', 'AI डिस क नाम अउर दाम पढ़त है…'], ['Trying offline reading…', 'बिना इंटरनेट वाले तरीक़े से पढ़ रहे हैं…', 'बिना इंटरनेट वाले तरीका से पढ़त हैं…'],
+  ['Non-veg — not allowed on FoodGaon', 'नॉन-वेज — FoodGaon पर नहीं चलेगा', 'नॉन-वेज — FoodGaon पै नाहीं चली'], ['Photo', 'फ़ोटो', 'फोटो'],
+);

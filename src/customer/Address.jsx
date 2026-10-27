@@ -57,7 +57,7 @@ export function AddressForm({ open, onClose, initial }) {
   return (
     <Sheet open={open} onClose={onClose} title={initial ? 'Edit address' : 'Add delivery address'} full>
       <div className="addr-map">
-        <MapView height={210} points={a.lat ? [{ id: 'me', kind: 'home', lat: a.lat, lng: a.lng }] : []} draggable="me" onDrag={(p) => setA((x) => ({ ...x, ...p }))} />
+        <MapView height={280} points={a.lat ? [{ id: 'me', kind: 'home', lat: a.lat, lng: a.lng }] : []} draggable="me" onDrag={(p) => setA((x) => ({ ...x, ...p }))} />
         <button className="btn small gps-btn" onClick={locate} disabled={locating}><Icon name="gps" size={16} /> {locating ? 'Finding…' : 'Use current location'}</button>
       </div>
       {!a.lat && <p className="tiny muted">Turn on GPS so the delivery partner reaches your exact door.</p>}

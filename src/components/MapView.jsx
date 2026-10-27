@@ -20,15 +20,37 @@ export default function MapView({ points = [], height = 220, draggable, onDrag, 
   const poly = useRef(null);
   const fitted = useRef('');
 
+  const layers = useRef({});
+  const dragRef = useRef(null);
+  dragRef.current = draggable && onDrag ? onDrag : null;
+  const [sat, setSat] = React.useState(() => { try { return localStorage.getItem('pp_map_sat') === '1'; } catch { return false; } });
+
   useEffect(() => {
-    map.current = L.map(el.current, { zoomControl: false, attributionControl: true }).setView([26.6178, 81.3657], 14);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© OpenStreetMap contributors',
-    }).addTo(map.current);
+    map.current = L.map(el.current, { zoomControl: false, attributionControl: true, maxZoom: 19 }).setView([26.6178, 81.3657], 15);
+    layers.current.street = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' });
+    // satellite photo + place names — shows houses, roads and fields even where street data is thin (villages)
+    layers.current.sat = L.layerGroup([
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18, attribution: 'Imagery © Esri' }),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18 }),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18, opacity: 0.8 }),
+    ]);
     L.control.zoom({ position: 'bottomright' }).addTo(map.current);
-    setTimeout(() => map.current?.invalidateSize(), 250);
-    return () => { map.current.remove(); map.current = null; markers.current = {}; };
+    // tap anywhere to move the draggable pin there
+    map.current.on('click', (e) => { if (dragRef.current) dragRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); });
+    // maps inside sliding sheets get the wrong size at first → keep fixing the size while it settles
+    const fix = () => map.current?.invalidateSize();
+    const timers = [100, 350, 800, 1500].map((ms) => setTimeout(fix, ms));
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fix) : null;
+    ro?.observe(el.current);
+    return () => { timers.forEach(clearTimeout); ro?.disconnect(); map.current.remove(); map.current = null; markers.current = {}; };
   }, []);
+  useEffect(() => {
+    const m = map.current; if (!m) return;
+    const on = sat ? layers.current.sat : layers.current.street; const off = sat ? layers.current.street : layers.current.sat;
+    if (m.hasLayer(off)) m.removeLayer(off);
+    if (!m.hasLayer(on)) on.addTo(m);
+    try { localStorage.setItem('pp_map_sat', sat ? '1' : '0'); } catch { /* ignore */ }
+  }, [sat]);
 
   useEffect(() => {
     const m = map.current; if (!m) return;
@@ -54,12 +76,17 @@ export default function MapView({ points = [], height = 220, draggable, onDrag, 
     const key = valid.map((p) => p.id).join(',');
     if (key && fitted.current !== key) {
       fitted.current = key;
-      if (valid.length === 1) m.setView([valid[0].lat, valid[0].lng], 16);
-      else m.fitBounds(L.latLngBounds(valid.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: 16 });
+      if (valid.length === 1) m.setView([valid[0].lat, valid[0].lng], 17);
+      else m.fitBounds(L.latLngBounds(valid.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: 17 });
     }
   }, [points, draggable, line]); // eslint-disable-line
 
-  return <div ref={el} className={'mapview ' + className} style={{ height }} />;
+  return (
+    <div className={'mapwrap ' + className} style={{ height }}>
+      <div ref={el} className="mapview" style={{ height: '100%' }} />
+      <button type="button" className="map-toggle" onClick={() => setSat(!sat)}>{sat ? '🗺️ Map' : '🛰️ Satellite'}</button>
+    </div>
+  );
 }
 
 function animateTo(mk, p) {

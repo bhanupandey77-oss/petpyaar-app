@@ -797,3 +797,10 @@ textarea.input { resize: vertical; }
 .fav-btn { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.92); display: grid; place-items: center; color: var(--muted); box-shadow: 0 2px 6px rgba(0,0,0,.12); z-index: 2; }
 .fav-btn.on { color: var(--brand); } .fav-btn svg { animation: popIn .35s var(--spring) both; }
 .fav-btn.big { position: static; width: 40px; height: 40px; flex: none; }
+.mapwrap { position: relative; border-radius: 16px; overflow: hidden; }
+.mapwrap .mapview { border-radius: 0; }
+.map-toggle { position: absolute; top: 10px; right: 10px; z-index: 500; background: #fff; border-radius: 20px; padding: 6px 12px; font-size: .78rem; font-weight: 700; box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+.pay-opt2.off { opacity: .55; filter: grayscale(.4); }
+.sel-bar { position: sticky; top: 0; z-index: 5; background: #fff; border: 1.5px solid var(--brand); border-radius: 14px; padding: 8px 10px; margin: 6px 0 10px; box-shadow: var(--shadow); }
+.mm-check { width: 20px; height: 20px; accent-color: var(--brand); flex: none; }
+.mm-row.picked { background: var(--brand-soft); border-radius: 12px; }

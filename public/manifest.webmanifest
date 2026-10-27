@@ -1,6 +1,6 @@
 {
-  "name": "PetPyaar — Pure veg food delivery",
-  "short_name": "PetPyaar",
+  "name": "FoodGaon — Pure veg food delivery",
+  "short_name": "FoodGaon",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#fff7ef",

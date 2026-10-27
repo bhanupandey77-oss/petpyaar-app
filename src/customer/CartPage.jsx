@@ -146,10 +146,10 @@ export default function CartPage({ nav, onPlaced }) {
 
         <div className="card">
           <h4>Payment</h4>
-          {upiNow && <PayOpt id="upi_now" cur={pay} set={setPay} art="upi" title="Pay now — any UPI app" sub="Your UPI app opens right away · money goes straight to the restaurant" tag="Fastest" />}
-          {upiDel && <PayOpt id="upi_rider" cur={pay} set={setPay} art="upi" title="Pay on delivery — any UPI app" sub="When food arrives, tap Pay — your UPI app opens (or scan the QR)" />}
-          {cod && <PayOpt id="cod" cur={pay} set={setPay} art="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" />}
-          {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added UPI yet, so only cash is available.</p>}
+          <PayOpt id="upi_now" cur={pay} set={setPay} art="upi" title="Pay now — any UPI app" sub="Your UPI app opens right away · money goes straight to the restaurant" tag="Fastest" off={!upiNow} />
+          <PayOpt id="upi_rider" cur={pay} set={setPay} art="upi" title="Pay on delivery — any UPI app" sub="When food arrives, tap Pay — your UPI app opens (or scan the QR)" off={!upiDel} />
+          <PayOpt id="cod" cur={pay} set={setPay} art="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" off={!cod} />
+          {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added its UPI yet — UPI options will open as soon as it does. Cash on delivery works now.</p>}
           <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. FoodGaon never holds your money.</p>
         </div>
         <p className="tiny muted center">Restaurant can take 1-2 minutes to accept. You can cancel until it is accepted.</p>
@@ -194,17 +194,19 @@ export default function CartPage({ nav, onPlaced }) {
 
 const kcalHint = (k) => (k <= 600 ? 'A light meal, nicely balanced.' : k <= 1200 ? 'A filling meal — great to share or for one hungry person.' : 'A big feast! Perfect for sharing with family.');
 
-function PayOpt({ id, cur, set, art, title, sub, tag }) {
+function PayOpt({ id, cur, set, art, title, sub, tag, off }) {
   const [pkg, setPkg] = useState(chosenApp());
-  const on = cur === id;
+  const on = cur === id && !off;
+  const toast = useToast();
+  const pick = () => (off ? toast(t('This restaurant has not added its UPI yet. Please choose cash.'), 'err') : set(id));
   return (
-    <div className={'pay-opt2' + (on ? ' on' : '')} onClick={() => set(id)} role="radio" aria-checked={on} tabIndex={0}>
+    <div className={'pay-opt2' + (on ? ' on' : '') + (off ? ' off' : '')} onClick={pick} role="radio" aria-checked={on} aria-disabled={off} tabIndex={0}>
       <div className="row gap">
         <span className={'pay-art ' + art}>{art === 'cash' ? <CashArt /> : <span className="upi-badge big">UPI</span>}</span>
         <span className="grow"><b>{title}{tag && <em className="pay-tag">{tag}</em>}</b><small>{sub}</small></span>
         <i className="radio" />
       </div>
-      {art === 'upi' && <UpiAppStrip value={on ? pkg : ''} onChange={(p) => { setPkg(p); set(id); }} compact={!on} />}
+      {art === 'upi' && <UpiAppStrip value={on ? pkg : ''} onChange={(p) => { if (off) { pick(); return; } setPkg(p); set(id); }} compact={!on} />}
     </div>
   );
 }
