@@ -805,3 +805,4 @@ textarea.input { resize: vertical; }
 .mm-check { width: 20px; height: 20px; accent-color: var(--brand); flex: none; }
 .mm-row.picked { background: var(--brand-soft); border-radius: 12px; }
 body.noscroll .cart-bar, body.noscroll .live-bar { display: none; }
+.logo-anim .logo-roof { animation: roofBob 2.4s ease-in-out infinite; } @keyframes roofBob { 50% { transform: translateY(-1.2px); } }

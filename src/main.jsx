@@ -5,6 +5,7 @@ import '@fontsource/poppins/latin-500.css';
 import '@fontsource/poppins/latin-600.css';
 import '@fontsource/poppins/latin-700.css';
 import '@fontsource/poppins/latin-800.css';
+import '@fontsource/poppins/latin-900.css';
 import '@fontsource/mukta/devanagari-400.css';
 import '@fontsource/mukta/devanagari-600.css';
 import '@fontsource/mukta/devanagari-700.css';

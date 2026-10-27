@@ -66,22 +66,20 @@ export function Logo({ size = 44, animate = false }) {
   return (
     <svg className={'logo' + (animate ? ' logo-anim' : '')} width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="FoodGaon logo">
       <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ff8a1f" /><stop offset="1" stopColor="#e2361b" />
-        </linearGradient>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff8a1f" /><stop offset="1" stopColor="#e2361b" /></linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill="url(#lg)" />
-      <g className="steam" stroke="#ffd34d" strokeWidth="2.6" strokeLinecap="round" fill="none">
-        <path d="M30 12c-2-2 2-4 0-6" /><path d="M37 12c-2-2 2-4 0-6" /><path d="M44 12c-2-2 2-4 0-6" />
-      </g>
-      {/* plate + village hut roof + F */}
-      <circle cx="32" cy="37" r="19" fill="#fff" />
-      <path d="M19 30 L32 19 L45 30" fill="none" stroke="#ffd34d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="32" y="48" textAnchor="middle" fontFamily="'Baloo 2', 'Poppins', sans-serif" fontWeight="800" fontSize="22" fill="#e2361b">F</text>
-      <circle cx="49" cy="51" r="4.2" fill="#1e9e55" stroke="#fff" strokeWidth="1.6" />
+      <path className="logo-roof" d="M22 17 L32 9 L42 17" fill="none" stroke="#ffd34d" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="32" y="34" textAnchor="middle" fontFamily="Poppins, 'Baloo 2', sans-serif" fontWeight="900" fontSize="17" letterSpacing="-.4" fill="#fff">FOOD</text>
+      <text x="32" y="55" textAnchor="middle" fontFamily="'Baloo 2', 'Mukta', sans-serif" fontWeight="800" fontSize="21" fill="#ffd34d">गाँव</text>
+      {/* Indian veg mark: green dot in a green square */}
+      <rect x="47" y="6" width="11" height="11" rx="1.5" fill="#fff" />
+      <rect x="48.6" y="7.6" width="7.8" height="7.8" rx=".8" fill="none" stroke="#1e9e55" strokeWidth="1.3" />
+      <circle cx="52.5" cy="11.5" r="2.2" fill="#1e9e55" />
     </svg>
   );
 }
+
 export function Wordmark({ size = 26 }) {
   return <span className="wordmark" style={{ fontSize: size }} data-notr=""><b>FOOD</b><i>गाँव</i></span>;
 }

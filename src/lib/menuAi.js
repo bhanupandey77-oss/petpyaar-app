@@ -4,7 +4,7 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { app } from './fb.js';
 import { compressImage } from './utils.js';
 
-const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+const MODELS = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview'];
 const CATS = ['sweets', 'lassi', 'chinese', 'fastfood', 'northindian', 'chaat', 'thali', 'southindian', 'icecream'];
 
 export async function readMenuWithAI(file, library) {
