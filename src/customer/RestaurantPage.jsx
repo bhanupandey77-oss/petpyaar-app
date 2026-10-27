@@ -141,9 +141,10 @@ export function FavBtn({ id, big }) {
   const favs = useFavs();
   const on = favs.includes(id);
   const [pop, setPop] = React.useState(0);
+  const toast = useToast();
   return (
     <button className={'fav-btn' + (on ? ' on' : '') + (big ? ' big' : '')} aria-label={on ? 'Remove from favourites' : 'Add to favourites'}
-      onClick={(e) => { e.stopPropagation(); favStore.toggle(id); setPop(Date.now()); }}>
+      onClick={(e) => { e.stopPropagation(); const now = favStore.toggle(id); setPop(Date.now()); toast(now ? t('❤️ Saved! See it in Account → My favourites and on Home') : t('Removed from favourites')); }}>
       <Icon key={pop} name="heart" size={big ? 22 : 16} fill={on ? '#e8461a' : 'none'} stroke={on ? 0 : 2} />
     </button>
   );

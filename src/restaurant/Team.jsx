@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Icon, Sheet, Field, useToast, Empty } from '../ui.jsx';
+import { Icon, Sheet, Field, useToast, Empty, WaBtn } from '../ui.jsx';
 import { useList, useDoc } from '../lib/data.js';
 import { patch, put, add } from '../lib/fb.js';
 import { rupee, plain, tel, fmtDateTime, dayKey } from '../lib/utils.js';
@@ -78,6 +78,7 @@ function RiderCard({ r, rest, orders, pays, onPay, onRemove }) {
       <div className="row gap">
         <span className="avatar">{prof?.photo ? <img src={prof.photo} alt="" /> : <Icon name="user" size={22} />}</span>
         <div className="grow"><b data-notr="">{prof?.name || r.name}</b><small className="muted">{plain(r.phone)}{prof?.vehicle ? ` · ${prof.vehicle}` : ''}</small></div>
+        <WaBtn phone={r.phone} />
         <a className="icon-btn round green" href={tel(r.phone)} aria-label="Call"><Icon name="phone" size={18} /></a>
       </div>
       <div className="money-grid">

@@ -43,6 +43,8 @@ export function km(a, b) {
 export const mapsDir = (p) => `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=two-wheeler`;
 export const mapsPin = (p) => `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
 export const tel = (phone) => `tel:${String(phone).replace(/^\+91/, '')}`;
+/** WhatsApp chat link (opens the WhatsApp app) with an optional ready message */
+export const wa = (phone, text = '') => { const d = String(phone || '').replace(/\D/g, '').slice(-10); return `https://wa.me/91${d}${text ? `?text=${encodeURIComponent(text)}` : ''}`; };
 export const plain = (phone) => String(phone || '').replace(/^\+91/, '');
 
 const ascii = (s, d) => { const t = String(s || '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim(); return t || d; };

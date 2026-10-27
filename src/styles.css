@@ -807,3 +807,18 @@ textarea.input { resize: vertical; }
 body.noscroll .cart-bar, body.noscroll .live-bar { display: none; }
 .logo-anim .logo-roof { animation: roofBob 2.4s ease-in-out infinite; } @keyframes roofBob { 50% { transform: translateY(-1.2px); } }
 .gst-split { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; font-size: .8rem; color: var(--muted); background: #faf3ec; border-radius: 10px; padding: 6px 10px; margin: 4px 0; } .gst-split b { color: var(--ink); }
+.hisab-card { border-radius: 18px; padding: 14px; margin-bottom: 12px; color: #fff; background: linear-gradient(120deg, #1e9e55, #2dbb6a); box-shadow: 0 10px 22px rgba(30, 158, 85, .25); }
+.hc-head { display: flex; align-items: center; gap: 10px; }
+.hc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.hc-grid div { background: rgba(255,255,255,.16); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; }
+.hc-grid small { font-size: .7rem; opacity: .9; } .hc-grid b { font-size: 1.05rem; } .hc-grid span { font-size: .7rem; opacity: .85; }
+.date-filter { display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--brand); border-radius: 12px; padding: 0 10px; background: #fff; color: var(--brand); }
+.date-filter select { border: 0; background: transparent; padding: 10px 0; width: 100%; outline: none; font-weight: 600; color: var(--ink); }
+.icon-btn.round.wa { background: #25d366; color: #fff; }
+.icon-btn.round.wa.small { width: 28px; height: 28px; }
+.wa-link { color: #128c3c; font-weight: 700; }
+.see-all { margin-left: auto; font-weight: 700; color: var(--brand, #e8461a); }
+.sec-title { display: flex; align-items: center; gap: 6px; }
+.fav-group { padding-top: 6px; }
+.fav-rest { width: 100%; background: none; border: 0; padding: 8px 0; border-bottom: 1px dashed #eadbd0; margin-bottom: 4px; text-align: left; color: inherit; }
+.pill { display: inline-flex; min-width: 24px; height: 22px; padding: 0 8px; align-items: center; justify-content: center; border-radius: 11px; background: #ffe7dc; color: #c23a10; font-weight: 800; font-size: .78rem; margin-left: 6px; }

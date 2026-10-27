@@ -1,3 +1,4 @@
+import { wa } from './lib/utils.js';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { LANGS, getLang, setLang } from './i18n/index.js';
@@ -20,6 +21,7 @@ const P = {
   right: 'M9 18l6-6-6-6',
   down: 'M6 9l6 6 6-6',
   download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  chat: 'M4 20l1.4-4.2A8 8 0 1 1 8.5 19z M9 10.5h.01M12 10.5h.01M15 10.5h.01',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   filter: 'M3 5h18l-7 8v6l-4-2v-4z',
   sort: 'M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4',
@@ -78,6 +80,12 @@ export function Logo({ size = 44, animate = false }) {
       <circle cx="52.5" cy="11.5" r="2.2" fill="#1e9e55" />
     </svg>
   );
+}
+
+/** green WhatsApp chat button */
+export function WaBtn({ phone, text, small, label }) {
+  if (!phone) return null;
+  return <a className={'icon-btn round wa' + (small ? ' small' : '')} href={wa(phone, text)} target="_blank" rel="noreferrer" aria-label={label || 'WhatsApp'} title="WhatsApp"><Icon name="chat" size={small ? 16 : 19} /></a>;
 }
 
 export function Wordmark({ size = 26 }) {

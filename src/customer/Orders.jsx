@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Icon, Empty, StatusChip, STATUS, Confirm, useToast, VegMark, Sheet, Field } from '../ui.jsx';
+import { Icon, Empty, StatusChip, STATUS, Confirm, useToast, VegMark, Sheet, Field, WaBtn } from '../ui.jsx';
 import { useApp } from '../App.jsx';
 import { useDoc, setStatus, ACTIVE, cartStore } from '../lib/data.js';
 import { patch } from '../lib/fb.js';
@@ -12,19 +12,23 @@ import { DocSheet, Invoice, CustomerStatement } from '../components/Docs.jsx';
 import { ReviewBox } from '../components/Reviews.jsx';
 
 const SORTS = { new: 'Newest first', old: 'Oldest first', high: 'Amount: high to low', low: 'Amount: low to high', rest: 'Restaurant A–Z' };
-export function OrdersList({ orders, nav }) {
+export function OrdersList({ orders, nav, openHisab }) {
   const { user, askLogin, config } = useApp();
   const [st, setSt] = useState('all');
   const [sort, setSort] = useState('new');
   const [rest, setRest] = useState('');
   const [q, setQ] = useState('');
-  const [hisab, setHisab] = useState(false);
+  const [hisab, setHisab] = useState(!!openHisab);
+  const [per, setPer] = useState('all');
+  const [from, setFrom] = useState(ymd(new Date(new Date().getFullYear(), 0, 1)));
+  const [to, setTo] = useState(ymd(new Date()));
   if (!user) return <div className="page"><div className="page-head"><h2>Orders</h2></div><Empty icon="receipt" title="Log in to see your orders" action={<button className="btn primary" onClick={askLogin}>Log in</button>} /></div>;
   const all = orders || [];
   const rests = [...new Map(all.map((o) => [o.restaurantId, o.restaurantName])).entries()];
   const ql = q.trim().toLowerCase();
   const list = all.filter((o) => (st === 'all' ? true : st === 'active' ? ACTIVE.includes(o.status) : st === 'cancelled' ? ['cancelled', 'rejected'].includes(o.status) : o.status === st))
     .filter((o) => !rest || o.restaurantId === rest)
+    .filter((o) => { if (per === 'all') return true; const [a, b] = rangeOf(per, from, to); return (o.day || '') >= a && (o.day || '') <= b; })
     .filter((o) => !ql || o.restaurantName.toLowerCase().includes(ql) || (o.code || '').toLowerCase().includes(ql) || o.items.some((x) => x.name.toLowerCase().includes(ql)))
     .sort((a, b) => (sort === 'old' ? a.createdMs - b.createdMs : sort === 'high' ? b.total - a.total : sort === 'low' ? a.total - b.total : sort === 'rest' ? a.restaurantName.localeCompare(b.restaurantName) || b.createdMs - a.createdMs : b.createdMs - a.createdMs));
   const spent = all.filter((o) => o.status === 'delivered').reduce((x, o) => x + Number(o.total || 0), 0);
@@ -32,16 +36,32 @@ export function OrdersList({ orders, nav }) {
     <div className="page">
       <div className="page-head"><h2>Your orders</h2></div>
       <div className="pad-x">
-        {all.length > 0 && (
-          <button className="hisab-cta" onClick={() => setHisab(true)}>
-            <span className="hc-ic"><Icon name="wallet" size={22} /></span>
-            <span className="grow"><b>My order hisab</b><small>{`${all.filter((o) => o.status === 'delivered').length} orders · ${rupee(spent)} in total — see by month, year or dates`}</small></span>
-            <Icon name="right" size={18} />
-          </button>
-        )}
+        {all.length > 0 && (() => {
+          const done = all.filter((o) => o.status === 'delivered');
+          const y = String(new Date().getFullYear()); const m = ymd(new Date()).slice(0, 7);
+          const sum = (l) => l.reduce((x, o) => x + Number(o.total || 0), 0);
+          const yl = done.filter((o) => (o.day || '').startsWith(y)); const ml = done.filter((o) => (o.day || '').startsWith(m));
+          return (
+            <div className="hisab-card">
+              <div className="hc-head"><span className="hc-ic"><Icon name="wallet" size={20} /></span><b className="grow">My order hisab</b><button className="btn small light" onClick={() => setHisab(true)}>Full hisab / PDF</button></div>
+              <div className="hc-grid">
+                <div><small>This month</small><b>{rupee(sum(ml))}</b><span>{`${ml.length} orders`}</span></div>
+                <div><small>{`This year (${y})`}</small><b>{rupee(sum(yl))}</b><span>{`${yl.length} orders`}</span></div>
+                <div><small>All time</small><b>{rupee(spent)}</b><span>{`${done.length} orders`}</span></div>
+              </div>
+            </div>
+          );
+        })()}
         {all.length > 0 && (
           <div className="ord-tools">
             <div className="rp-search" style={{ margin: 0 }}><Icon name="search" size={18} /><input placeholder="Search dish, restaurant or order no." value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div className="date-filter">
+              <Icon name="clock" size={16} />
+              <select value={per} onChange={(e) => setPer(e.target.value)}>
+                {[['all', 'All time'], ['month', 'This month'], ['lastmonth', 'Last month'], ['year', 'This year'], ['lastyear', 'Last year'], ['custom', 'Choose dates']].map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+              </select>
+            </div>
+            {per === 'custom' && <div className="row gap"><Field label="From"><input className="input" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field><Field label="To"><input className="input" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field></div>}
             <div className="chip-row wrap" style={{ padding: 0 }}>
               {[['all', 'All'], ['active', 'Active'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']].map(([k, l]) => <button key={k} className={'fchip' + (st === k ? ' on' : '')} onClick={() => setSt(k)}>{l}</button>)}
             </div>
@@ -49,7 +69,7 @@ export function OrdersList({ orders, nav }) {
               <label className="sel grow"><Icon name="sort" size={16} /><select value={sort} onChange={(e) => setSort(e.target.value)}>{Object.entries(SORTS).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
               {rests.length > 1 && <label className="sel grow"><Icon name="store" size={16} /><select value={rest} onChange={(e) => setRest(e.target.value)}><option value="">{t('All restaurants')}</option>{rests.map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>}
             </div>
-            <p className="tiny muted">{`${list.length} of ${all.length} orders`}</p>
+            <p className="tiny muted">{`${list.length} of ${all.length} orders`}{list.length ? ` · ${rupee(list.filter((o) => o.status === 'delivered').reduce((x, o) => x + Number(o.total || 0), 0))}` : ''}</p>
           </div>
         )}
         {orders === undefined && [1, 2].map((i) => <div key={i} className="order-card skeleton" style={{ height: 110 }} />)}
@@ -187,6 +207,7 @@ export function TrackOrder({ id, fresh, nav }) {
         <div className="card person">
           <span className="avatar"><Icon name="store" size={22} /></span>
           <div className="grow"><b data-notr="">{o.restaurantName}</b><small className="muted" data-notr="">{o.restaurantAddr}</small></div>
+          {o.restaurantPhone && <WaBtn phone={o.restaurantPhone} text={`नमस्ते, मेरा FoodGaon ऑर्डर #${o.code} के बारे में…`} label="WhatsApp restaurant" />}
           {o.restaurantPhone && <a className="icon-btn round" href={tel(o.restaurantPhone)} aria-label="Call restaurant"><Icon name="phone" size={20} /></a>}
         </div>
 
@@ -273,6 +294,7 @@ function RiderCard({ o }) {
         <small className="muted">{[t('Your delivery partner'), veh && t(veh), p?.vehicle].filter(Boolean).join(' · ')}</small>
         {(p?.photo || p?.vehiclePhoto) && <button className="link small" onClick={() => setShow(true)}>See photo & vehicle</button>}
       </div>
+      <WaBtn phone={o.riderPhone} text={`भैया, मेरा FoodGaon ऑर्डर #${o.code}…`} label="WhatsApp delivery partner" />
       <a className="icon-btn round green" href={tel(o.riderPhone)} aria-label="Call delivery partner"><Icon name="phone" size={20} /></a>
       <Sheet open={show} onClose={() => setShow(false)} title={p?.name || o.riderName || 'Delivery partner'}>
         {p?.photo && <img className="rider-big" src={p.photo} alt="" />}

@@ -10,10 +10,12 @@ import CartPage from './CartPage.jsx';
 import { OrdersList, TrackOrder } from './Orders.jsx';
 import Account from './Account.jsx';
 import { AddressPage } from './Address.jsx';
+import FavsPage from './FavsPage.jsx';
 
 export default function CustomerApp() {
   const { user } = useApp();
   const [tab, setTab] = useState('home');
+  const [hisabKey, setHisabKey] = useState(0);
   const [stack, setStack] = useState([]);
   const cart = useCart();
   const { count, total } = cartTotals(cart);
@@ -35,11 +37,12 @@ export default function CustomerApp() {
   if (top?.name === 'rest') page = <RestaurantPage id={top.id} nav={nav} />;
   else if (top?.name === 'cart') page = <CartPage nav={nav} onPlaced={(id) => { setStack([{ name: 'track', id, fresh: true }]); window.scrollTo(0, 0); }} />;
   else if (top?.name === 'search') page = <SearchPage nav={nav} cat={top.cat} stacked />;
+  else if (top?.name === 'favs') page = <FavsPage nav={nav} />;
   else if (top?.name === 'address') page = <AddressPage nav={nav} />;
   else if (top?.name === 'track') page = <TrackOrder id={top.id} fresh={top.fresh} nav={nav} />;
   else if (tab === 'search') page = <SearchPage nav={nav} />;
-  else if (tab === 'orders') page = <OrdersList orders={myOrders} nav={nav} />;
-  else if (tab === 'account') page = <Account />;
+  else if (tab === 'orders') page = <OrdersList key={hisabKey} openHisab={hisabKey > 0} orders={myOrders} nav={nav} />;
+  else if (tab === 'account') page = <Account nav={nav} favCount={0} openHisab={() => { setHisabKey(Date.now()); setTab('orders'); window.scrollTo(0, 0); }} />;
   else page = <Home nav={nav} />;
 
   const showCartBar = count > 0 && top?.name !== 'cart' && top?.name !== 'track';
@@ -62,7 +65,7 @@ export default function CustomerApp() {
         </button>
       )}
       {!stack.length && (
-        <BottomNav value={tab} onChange={(x) => { setTab(x); window.scrollTo(0, 0); }} tabs={[
+        <BottomNav value={tab} onChange={(x) => { if (x === 'orders') setHisabKey(0); setTab(x); window.scrollTo(0, 0); }} tabs={[
           { id: 'home', icon: 'home', label: 'Home' },
           { id: 'search', icon: 'search', label: 'Search' },
           { id: 'orders', icon: 'receipt', label: 'Orders', badge: active.length },

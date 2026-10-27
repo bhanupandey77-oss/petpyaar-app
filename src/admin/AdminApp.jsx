@@ -3,7 +3,7 @@ import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, Img, Logo, Conf
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useItems, useList, ACTIVE } from '../lib/data.js';
 import { put, patch, remove, bulk, getList, watchList } from '../lib/fb.js';
-import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDateTime } from '../lib/utils.js';
+import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDateTime, tel, wa } from '../lib/utils.js';
 import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS } from '../data/menu.js';
 import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantApp.jsx';
 import MenuManager from '../restaurant/MenuManager.jsx';
@@ -181,6 +181,8 @@ function Restaurants() {
             <div className="row gap">
               <button className="link small" onClick={() => setMenu(r)}>Menu</button>
               <button className="link small" onClick={() => setEdit(r)}>Edit</button>
+              {r.ownerPhone && <a className="link small" href={tel(r.ownerPhone)}>Call</a>}
+              {r.ownerPhone && <a className="link small wa-link" href={wa(r.ownerPhone, `नमस्ते ${r.ownerName || ''} जी, FoodGaon (TechGaon AI Services) से —`)} target="_blank" rel="noreferrer">WhatsApp</a>}
             </div>
           </div>
           <Toggle on={r.open !== false} onChange={(v) => patch('restaurants', r.id, { open: v }).catch(() => toast(t('Could not save'), 'err'))} label="Open" />

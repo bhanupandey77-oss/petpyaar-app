@@ -5,8 +5,10 @@ import { t } from '../i18n/index.js';
 import { useApp, ROLE_INFO } from '../App.jsx';
 import { tel, plain } from '../lib/utils.js';
 import { PHOTOS } from '../data/photos.js';
+import { useFavs } from '../lib/data.js';
 
-export default function Account() {
+export default function Account({ nav, openHisab }) {
+  const favs = useFavs();
   const { user, config, roles, setRole, logout, askLogin } = useApp();
   const [credits, setCredits] = useState(false);
   const [about, setAbout] = useState(false);
@@ -40,6 +42,10 @@ export default function Account() {
             ))}
           </div>
         )}
+        <div className="card">
+          <button className="menu-row" onClick={() => nav.go({ name: 'favs' })}><Icon name="heart" size={20} fill="#e8461a" stroke={0} /><span className="grow">My favourites</span><span className="pill">{favs.length}</span><Icon name="right" size={18} /></button>
+          {user && <button className="menu-row" onClick={openHisab}><Icon name="wallet" size={20} /><span className="grow">My order hisab</span><small className="muted">Year · month · dates · PDF</small><Icon name="right" size={18} /></button>}
+        </div>
         <div className="card">
           <a className="menu-row" href={tel(config.supportPhone)}><Icon name="help" size={20} /><span className="grow">Help & support</span><small className="muted">{config.supportPhone}</small></a>
           <button className="menu-row" onClick={() => setAbout(true)}><Icon name="info" size={20} /><span className="grow">About FoodGaon</span><Icon name="right" size={18} /></button>

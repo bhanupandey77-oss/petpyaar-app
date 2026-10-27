@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo } from '../ui.jsx';
+import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo, WaBtn } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange } from '../lib/data.js';
 import { DocSheet, Statement } from '../components/Docs.jsx';
@@ -138,7 +138,7 @@ export function OrderCard({ o, showRest, admin }) {
       {o.note && <div className="oc-note">{`“${o.note}”`}</div>}
       {o.discount > 0 && <div className="tiny t-green">{`Coupon ${o.offerCode}: − ${rupee(o.discount)}`}{o.discountBy === 'restaurant' ? '' : ` (${t('paid by FoodGaon')})`}</div>}
       <div className="row between small">
-        <span>{o.customerName} · <a href={tel(o.customerPhone)}>{plain(o.customerPhone)}</a></span>
+        <span className="row gap" style={{ gap: 6 }}>{o.customerName} · <a href={tel(o.customerPhone)}>{plain(o.customerPhone)}</a><WaBtn small phone={o.customerPhone} text={`नमस्ते ${o.customerName || ''} जी, ${o.restaurantName} से — आपका ऑर्डर #${o.code}`} /></span>
         <b>{rupee(o.total)} <small className="muted">{o.payment === 'cod' ? 'Cash' : o.payment === 'upi_now' ? 'UPI (pay now)' : 'UPI on delivery'}</small></b>
       </div>
       {o.payment !== 'cod' && !['rejected', 'cancelled'].includes(o.status) && (

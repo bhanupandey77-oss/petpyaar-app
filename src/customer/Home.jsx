@@ -81,7 +81,7 @@ export default function Home({ nav }) {
 
       {favItems.length > 0 && (
         <Reveal as="section" className="sec">
-          <h2 className="sec-title"><Icon name="heart" size={20} fill="#e8461a" stroke={0} /> Your favourites</h2>
+          <h2 className="sec-title"><Icon name="heart" size={20} fill="#e8461a" stroke={0} /> Your favourites <button className="link small see-all" onClick={() => nav.go({ name: 'favs' })}>{`See all (${favs.length})`}</button></h2>
           <div className="best-row">
             {favItems.map((it) => <BestCard key={it.id} it={it} rest={(rests || []).find((r) => r.id === it.restaurantId)} onView={() => setView(it)} showKcal={config.showCalories} />)}
           </div>

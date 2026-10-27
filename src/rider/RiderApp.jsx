@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Icon, Toggle, Empty, useToast, StatusChip, Logo, BottomNav, Confirm } from '../ui.jsx';
+import { Icon, Toggle, Empty, useToast, StatusChip, Logo, BottomNav, Confirm, WaBtn } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useList, setStatus, useRestaurants, useDoc } from '../lib/data.js';
 import { UpiQr, UpiEditor } from '../components/Pay.jsx';
@@ -115,12 +115,14 @@ function DeliveryCard({ o, me, available, phone, name }) {
         <span className="leg-ic"><Icon name="store" size={18} /></span>
         <div className="grow"><small>PICK UP{d1 != null ? ` · ${d1.toFixed(1)} km` : ''}</small><b data-notr="">{o.restaurantName}</b><p className="tiny muted" data-notr="">{o.restaurantAddr}</p></div>
         {rest && <a className="icon-btn round" href={mapsDir(rest)} target="_blank" rel="noreferrer" aria-label="Navigate to restaurant"><Icon name="nav" size={18} /></a>}
+        {o.restaurantPhone && <WaBtn phone={o.restaurantPhone} text={`ऑर्डर #${o.code}`} />}
         {o.restaurantPhone && <a className="icon-btn round" href={tel(o.restaurantPhone)} aria-label="Call restaurant"><Icon name="phone" size={18} /></a>}
       </div>
       <div className="leg">
         <span className="leg-ic home"><Icon name="home" size={18} /></span>
         <div className="grow"><small>DROP{d2 != null ? ` · ${d2.toFixed(1)} km from shop` : ''}</small><b data-notr="">{o.address?.name || o.customerName}</b><p className="tiny muted" data-notr="">{o.address?.line}</p></div>
         {home ? <a className="icon-btn round" href={mapsDir(home)} target="_blank" rel="noreferrer" aria-label="Navigate to customer"><Icon name="nav" size={18} /></a> : <span className="tiny t-red">No GPS</span>}
+        <WaBtn phone={o.address?.phone || o.customerPhone} text={`नमस्ते, मैं FoodGaon से आपका ऑर्डर #${o.code} लेकर आ रहा हूँ।`} />
         <a className="icon-btn round green" href={tel(o.address?.phone || o.customerPhone)} aria-label="Call customer"><Icon name="phone" size={18} /></a>
       </div>
       <div className="row between small"><span>{`${o.items.reduce((a, x) => a + x.qty, 0)} items`}</span>
