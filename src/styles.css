@@ -806,3 +806,4 @@ textarea.input { resize: vertical; }
 .mm-row.picked { background: var(--brand-soft); border-radius: 12px; }
 body.noscroll .cart-bar, body.noscroll .live-bar { display: none; }
 .logo-anim .logo-roof { animation: roofBob 2.4s ease-in-out infinite; } @keyframes roofBob { 50% { transform: translateY(-1.2px); } }
+.gst-split { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; font-size: .8rem; color: var(--muted); background: #faf3ec; border-radius: 10px; padding: 6px 10px; margin: 4px 0; } .gst-split b { color: var(--ink); }

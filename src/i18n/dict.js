@@ -948,3 +948,7 @@ DICT.push(
   ['Sending photo to AI…', 'फ़ोटो AI को भेजी जा रही है…', 'फोटो AI का भेजी जात है…'], ['AI is reading dish names & prices…', 'AI डिश के नाम और दाम पढ़ रहा है…', 'AI डिस क नाम अउर दाम पढ़त है…'], ['Trying offline reading…', 'बिना इंटरनेट वाले तरीक़े से पढ़ रहे हैं…', 'बिना इंटरनेट वाले तरीका से पढ़त हैं…'],
   ['Non-veg — not allowed on FoodGaon', 'नॉन-वेज — FoodGaon पर नहीं चलेगा', 'नॉन-वेज — FoodGaon पै नाहीं चली'], ['Photo', 'फ़ोटो', 'फोटो'],
 );
+DICT.push(
+  ['Food value {}', 'खाने का दाम {}', 'खाना क दाम {}'], ['Menu prices already include GST — nothing extra is added.', 'मेन्यू के दाम में GST पहले से शामिल है — ऊपर से कुछ नहीं जुड़ता।', 'मेन्यू क दाम मा GST पहिले से सामिल बा — ऊपर से कुछ नाहीं जुड़त।'],
+  ['Includes GST {}%', 'इसमें GST {}% शामिल', 'एहमा GST {}% सामिल'],
+);

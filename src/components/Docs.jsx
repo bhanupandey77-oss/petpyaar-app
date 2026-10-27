@@ -52,7 +52,7 @@ export function Invoice({ o, config }) {
         <tbody>{o.items.map((x) => <tr key={x.id}><td>{x.name}</td><td>{x.qty}</td><td>{rupee(x.price)}</td><td>{rupee(x.price * x.qty)}</td></tr>)}</tbody>
       </table>
       <div className="doc-sum">
-        <div><span>Item total</span><span>{rupee(o.itemTotal)}</span></div>
+        <div><span>{o.gstIncluded ? 'Item total (incl. GST)' : 'Item total'}</span><span>{rupee(o.itemTotal)}</span></div>
         {o.discount > 0 && <div><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
         <div><span>Taxable value</span><span>{rupee(o.taxable ?? o.itemTotal - (o.discount || 0))}</span></div>
         <div><span>{`CGST ${(o.gstPct || 5) / 2}%`}</span><span>{rupee(r2((o.gst || 0) / 2))}</span></div>

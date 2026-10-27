@@ -76,7 +76,7 @@ export const ACTIVE = ['placed', 'accepted', 'preparing', 'ready', 'picked'];
 export const r2 = (n) => Math.round(n * 100) / 100;
 
 /** FoodGaon money rules (per order)
- *  item prices are WITHOUT GST → GST 5% added on the bill (FoodGaon pays it to govt under section 9(5))
+ *  menu prices INCLUDE GST 5% → bill splits them: ₹210 = ₹200 food + ₹10 GST (FoodGaon pays the GST to govt under section 9(5))
  *  commission 4.90% on the full bill incl. GST (it already includes FoodGaon's own 18% GST)
  *  customer pays the restaurant directly; every week the restaurant sends FoodGaon:  GST + commission (− FoodGaon-funded coupon)  */
 export function billFor({ itemTotal, discount = 0, discountBy = '', rest = {}, config = {} }) {
@@ -84,15 +84,16 @@ export function billFor({ itemTotal, discount = 0, discountBy = '', rest = {}, c
   const pct = Number(rest.commissionPct ?? config.commissionPct ?? 4.9);
   const cgPct = Number(config.commissionGstPct ?? 18);
   const disc = Math.max(0, Math.min(Number(discount) || 0, itemTotal));
-  const taxable = r2(itemTotal - disc);
-  const gst = r2((taxable * gstPct) / 100);
+  const foodIncl = r2(itemTotal - disc);                       // what the customer pays for food, GST included
+  const taxable = r2((foodIncl * 100) / (100 + gstPct));         // food value without GST
+  const gst = r2(foodIncl - taxable);
   const deliveryFee = Number(config.customerDeliveryFee || 0);
-  const total = r2(taxable + gst + deliveryFee);
+  const total = r2(foodIncl + deliveryFee);
   const commission = r2((total * pct) / 100);
   const commissionGst = r2((commission * cgPct) / (100 + cgPct));
   const fgCoupon = discountBy === 'admin' ? disc : 0; // FoodGaon gives this back to the restaurant
   const dues = r2(gst + commission - fgCoupon);
-  return { gstPct, commissionPct: pct, taxable, gst, cgst: r2(gst / 2), sgst: r2(gst - r2(gst / 2)), deliveryFee, total, commission, commissionGst, fgCoupon, dues, payable: r2(total - dues), discount: disc };
+  return { gstPct, commissionPct: pct, taxable, gst, cgst: r2(gst / 2), sgst: r2(gst - r2(gst / 2)), deliveryFee, total, commission, commissionGst, fgCoupon, dues, payable: r2(total - dues), discount: disc, gstIncluded: true };
 }
 
 /** weekly settlement cycle: 1-7, 8-14, 15-21, 22-28, 29-end → '2026-11-W1' */
@@ -122,7 +123,7 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0 })),
     itemTotal, discount: b.discount, offerCode: b.discount ? offer.code : '', discountBy, kcal,
-    taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, deliveryFee: b.deliveryFee, total: b.total,
+    taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, gstIncluded: true, deliveryFee: b.deliveryFee, total: b.total,
     commissionPct: b.commissionPct, commission: b.commission, commissionGst: b.commissionGst, fgCoupon: b.fgCoupon,
     dues: b.dues, restDelivery: 0, payable: b.payable,
     firmName: config.firmName || 'TechGaon AI Services', firmGstin: config.gstin || '',

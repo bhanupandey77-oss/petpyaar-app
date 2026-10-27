@@ -129,10 +129,12 @@ export default function CartPage({ nav, onPlaced }) {
           <h4><Icon name="receipt" size={18} /> Bill details</h4>
           <div className="bill"><span>{`Item total (${list.reduce((a, x) => a + x.qty, 0)} items)`}</span><span>{rupee(total)}</span></div>
           {discount > 0 && <div className="bill t-green"><span>{`Coupon (${applied.code})`}</span><span>− {rupee(discount)}</span></div>}
-          <div className="bill"><span>{`GST ${bill.gstPct}% on food`}</span><span>{rupee(bill.gst)}</span></div>
           <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <b className="t-green">FREE</b>}</span></div>
           <div className="bill total"><span>To pay</span><span>{rupee(bill.total)}</span></div>
-          <p className="tiny muted">Prices on the menu are without GST. GST is added once on the bill.</p>
+          <div className="gst-split">
+            <span>{`Food value ${rupee(bill.taxable)}`}</span><span>+</span><span>{`GST ${bill.gstPct}% ${rupee(bill.gst)}`}</span><span>=</span><b>{rupee(bill.total - fee)}</b>
+          </div>
+          <p className="tiny muted">Menu prices already include GST — nothing extra is added.</p>
           {discount > 0 && <div className="saved-strip">{`🎉 You saved ${rupee(discount)} on this order`}</div>}
           {minOrder > 0 && total < minOrder && <div className="alert alert-amber">{`Add ${rupee(minOrder - total)} more — minimum order is ${rupee(minOrder)}`}</div>}
         </div>

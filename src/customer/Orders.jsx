@@ -208,7 +208,7 @@ export function TrackOrder({ id, fresh, nav }) {
             <div key={x.id} className="bill"><span><VegMark size={11} /> {x.name} × {x.qty}</span><span>{rupee(x.price * x.qty)}</span></div>
           ))}
           {o.discount > 0 && <div className="bill t-green"><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
-          {o.gst > 0 && <div className="bill"><span>{`GST ${o.gstPct || 5}%`}</span><span>{rupee(o.gst)}</span></div>}
+          {o.gst > 0 && <div className="bill muted small"><span>{o.gstIncluded ? `Includes GST ${o.gstPct || 5}%` : `GST ${o.gstPct || 5}%`}</span><span>{rupee(o.gst)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span className="t-green">{o.deliveryFee ? rupee(o.deliveryFee) : 'FREE'}</span></div>
           <div className="bill total"><span>{o.payment === 'cod' ? 'To pay in cash' : o.payment === 'upi_rider' ? 'To pay by UPI on delivery' : o.paid || o.paymentClaim ? 'Paid by UPI' : 'To pay by UPI'}</span><span>{rupee(o.total)}</span></div>
           <button className="btn ghost block" onClick={() => setBill(true)}><Icon name="receipt" size={18} /> View bill / Download PDF</button>
