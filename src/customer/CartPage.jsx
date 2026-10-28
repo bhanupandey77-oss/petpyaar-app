@@ -6,6 +6,7 @@ import { LS, priceText, lineText } from '../lib/utils.js';
 import { Icon, VegMark, Stepper, Empty, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
 import { useCart, cartTotals, cartStore, useRestaurants, placeOrder, billFor } from '../lib/data.js';
+import PayWait from './PayWait.jsx';
 import NoteBox from './NoteBox.jsx';
 import { rupee, upiLink, km } from '../lib/utils.js';
 import { upiPay } from '../lib/native.js';
@@ -29,6 +30,7 @@ export default function CartPage({ nav, onPlaced }) {
   const payOk = (p) => (p === 'upi_now' ? upiNow : p === 'upi_rider' ? upiDel : p === 'cod' ? cod : false);
   useEffect(() => { if (rest && !payOk(pay)) setPay(upiNow ? 'upi_now' : upiDel ? 'upi_rider' : 'cod'); }, [rest?.id, rest?.upiId, rest?.upiQr]); // eslint-disable-line
   const [note, setNote] = useState('');
+  const [paying, setPaying] = useState(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(false);
   const fee = Number(config.customerDeliveryFee || 0);
@@ -69,16 +71,14 @@ export default function CartPage({ nav, onPlaced }) {
     if (far) { toast(t('Sorry, this restaurant delivers only within {} km').replace('{}', radius), 'err'); return; }
     setBusy(true);
     try {
+      const payNow = pay === 'upi_now' && rest.upiId;
       const id = await placeOrder({
         user, customerName: user.displayName || addr.name, rest, config, cartData: cart, note, payment: pay,
-        offer: discount ? applied : null, discount,
+        offer: discount ? applied : null, discount, status: payNow ? 'awaiting_payment' : 'placed',
         address: { label: addr.label, name: addr.name, phone: addr.phone, line: addrLine(addr), lat: addr.lat || null, lng: addr.lng || null },
       });
       LS.set('pp_pay', pay);
-      if (pay === 'upi_now' && rest.upiId) {
-        // money goes straight to the restaurant's own UPI
-        await upiPay(upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: bill.total, note: `FoodGaon order ${rest.name}`, ref: id }), chosenApp());
-      }
+      if (payNow) { setPaying({ id, amount: bill.total }); setBusy(false); return; } // order goes to the restaurant only after payment
       cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
     } catch (e) { console.warn(e); toast(t('Could not place the order. Check internet and try again.'), 'err'); }
@@ -88,6 +88,7 @@ export default function CartPage({ nav, onPlaced }) {
   return (
     <div className="page cart-page">
       <TopBar onBack={nav.back} title={rest?.name || 'Cart'} />
+      {paying && <PayWait order={paying} rest={rest} onDone={(id) => { setPaying(null); cartStore.clear(); LS.set('pp_coupon', ''); onPlaced(id); }} onClose={() => setPaying(null)} />}
       <div className="pad-x">
         <div className="card">
           {list.map((x) => (
@@ -129,13 +130,14 @@ export default function CartPage({ nav, onPlaced }) {
           <h4><Icon name="receipt" size={18} /> Bill details</h4>
           <div className="bill"><span>{`Item total (${list.reduce((a, x) => a + x.qty, 0)} items)`}</span><span>{rupee(total)}</span></div>
           {discount > 0 && <div className="bill t-green"><span>{`Coupon (${applied.code})`}</span><span>− {rupee(discount)}</span></div>}
+          {!bill.gstIncluded && <div className="bill"><span>{`GST ${bill.gstPct}%`}</span><span>+ {rupee(bill.gst)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <b className="t-green">FREE</b>}</span></div>
           <div className="bill total"><span>To pay</span><span>{rupee(bill.total)}</span></div>
           {list.some((x) => x.onMrp && !(Number(x.price) > 0)) && <p className="tiny mrp-note">{t('“On MRP” items are not in this total — pay the printed MRP to the restaurant at delivery.')}</p>}
           <div className="gst-split">
             <span>{`Food value ${rupee(bill.taxable)}`}</span><span>+</span><span>{`GST ${bill.gstPct}% ${rupee(bill.gst)}`}</span><span>=</span><b>{rupee(bill.total - fee)}</b>
           </div>
-          <p className="tiny muted">Menu prices already include GST — nothing extra is added.</p>
+          <p className="tiny muted">{bill.gstIncluded ? t('Menu prices already include GST — nothing extra is added.') : t('Menu prices are without GST — GST is added in the bill.')}</p>
           {discount > 0 && <div className="saved-strip">{`🎉 You saved ${rupee(discount)} on this order`}</div>}
           {minOrder > 0 && total < minOrder && <div className="alert alert-amber">{`Add ${rupee(minOrder - total)} more — minimum order is ${rupee(minOrder)}`}</div>}
         </div>

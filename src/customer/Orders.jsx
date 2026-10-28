@@ -1,3 +1,4 @@
+import { HideOrderBtn, visibleFor } from '../components/OrderActions.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Empty, StatusChip, STATUS, Confirm, useToast, VegMark, Sheet, Field, WaBtn } from '../ui.jsx';
 import { useApp } from '../App.jsx';
@@ -23,7 +24,7 @@ export function OrdersList({ orders, nav, openHisab }) {
   const [from, setFrom] = useState(ymd(new Date(new Date().getFullYear(), 0, 1)));
   const [to, setTo] = useState(ymd(new Date()));
   if (!user) return <div className="page"><div className="page-head"><h2>Orders</h2></div><Empty icon="receipt" title="Log in to see your orders" action={<button className="btn primary" onClick={askLogin}>Log in</button>} /></div>;
-  const all = orders || [];
+  const all = (orders || []).filter(visibleFor('customer'));
   const rests = [...new Map(all.map((o) => [o.restaurantId, o.restaurantName])).entries()];
   const ql = q.trim().toLowerCase();
   const list = all.filter((o) => (st === 'all' ? true : st === 'active' ? ACTIVE.includes(o.status) : st === 'cancelled' ? ['cancelled', 'rejected'].includes(o.status) : o.status === st))
@@ -75,11 +76,14 @@ export function OrdersList({ orders, nav, openHisab }) {
         {orders === undefined && [1, 2].map((i) => <div key={i} className="order-card skeleton" style={{ height: 110 }} />)}
         {orders && !all.length && <Empty icon="receipt" title="No orders yet" text="Your hot, fresh food is just a few taps away." />}
         {list.map((o, i) => (
-          <button key={o.id} className="order-card" style={{ animationDelay: Math.min(i, 8) * 50 + 'ms' }} onClick={() => nav.track(o.id)}>
-            <div className="row between"><b data-notr="">{o.restaurantName}</b><StatusChip s={o.status} /></div>
-            <p className="small muted">{o.items.map((x) => `${tr(x.name)} × ${x.qty}`).join(', ')}</p>
-            <div className="row between small"><span className="muted">{fmtDateTime(o.createdMs)} · <span data-notr="">#{o.code}</span></span><b>{rupee(o.total)}</b></div>
-          </button>
+          <div key={o.id} className="oc-wrap">
+            <button className="order-card" style={{ animationDelay: Math.min(i, 8) * 50 + 'ms' }} onClick={() => nav.track(o.id)}>
+              <div className="row between"><b data-notr="">{o.restaurantName}</b><StatusChip s={o.status} /></div>
+              <p className="small muted">{o.items.map((x) => `${tr(x.name)} × ${x.qty}`).join(', ')}</p>
+              <div className="row between small"><span className="muted">{fmtDateTime(o.createdMs)} · <span data-notr="">#{o.code}</span></span><b>{rupee(o.total)}</b></div>
+            </button>
+            {!ACTIVE.includes(o.status) && <HideOrderBtn o={o} role="customer" />}
+          </div>
         ))}
       </div>
       {hisab && <OrderHisab orders={all} config={config} user={user} onClose={() => setHisab(false)} />}

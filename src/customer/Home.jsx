@@ -7,6 +7,7 @@ import { priceText, lineText, rupee, LS } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import { FloatingVeggies, Typewriter, Reveal } from '../components/Motion.jsx';
 import DishView from '../components/DishView.jsx';
+import FreeDelivery from '../components/FreeDelivery.jsx';
 import { useOffers, isLive, offerLabel, offerTerms } from '../lib/offers.js';
 
 
@@ -47,7 +48,8 @@ export default function Home({ nav }) {
         <div className="veg-ribbon"><VegMark size={14} /> Pure veg · FREE delivery within 5 km</div>
       </header>
 
-      <Banners list={(banners || []).filter((b) => b.active !== false)} nav={nav} />
+      <FreeDelivery km={config.radiusKm || 5} />
+      <Banners list={(banners || []).filter((b) => b.active !== false && (!b.code || offers.some((o) => o.code === b.code)))} nav={nav} />
 
       {offers.length > 0 && (
         <Reveal as="section" className="sec">

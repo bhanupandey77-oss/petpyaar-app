@@ -1,7 +1,9 @@
+import { useMenuPack } from '../lib/menuPack.js';
+import { HideOrderBtn, visibleFor } from '../components/OrderActions.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo, WaBtn } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
-import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange } from '../lib/data.js';
+import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange , isRealOrder } from '../lib/data.js';
 import { DocSheet, Statement } from '../components/Docs.jsx';
 import { patch, add } from '../lib/fb.js';
 import { UpiEditor, UpiQr, UpiButton } from '../components/Pay.jsx';
@@ -38,8 +40,11 @@ export function useNewOrderAlert(orders, title = 'New order!') {
 export default function RestaurantApp() {
   const { staff, logout } = useApp();
   const restId = staff?.restaurant;
-  const rest = (useRestaurants() || []).find((r) => r.id === restId);
-  const orders = useList('orders', restId ? [['restaurantId', '==', restId]] : null, [restId]);
+  const allRests = useRestaurants();
+  const rest = (allRests || []).find((r) => r.id === restId);
+  useMenuPack(allRests, (rid) => rid === restId);
+  const orders0 = useList('orders', restId ? [['restaurantId', '==', restId]] : null, [restId]);
+  const orders = orders0 && orders0.filter(isRealOrder);
   const [tab, setTab] = useState('orders');
   const reviews = useReviews(restId);
   const toast = useToast();
@@ -68,7 +73,7 @@ export default function RestaurantApp() {
       </header>
       <div className="page-anim" key={tab}>
         {tab === 'orders' && <RestOrders orders={orders} />}
-        {tab === 'menu' && <MenuManager restId={rest.id} />}
+        {tab === 'menu' && <MenuManager restId={rest.id} rest={rest} />}
         {tab === 'money' && <><DailyReport orders={orders} rest={rest} reviews={reviews} /><Dues orders={orders} rest={rest} /><Earnings orders={orders} /></>}
         {tab === 'team' && <Team rest={rest} orders={orders} />}
         {tab === 'shop' && <ShopSettings rest={rest} />}
@@ -108,7 +113,27 @@ export function RestOrders({ orders, showRest }) {
       {ready.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
       {out.length > 0 && <h3 className="board-h">Out for delivery</h3>}
       {out.map((o) => <OrderCard key={o.id} o={o} showRest={showRest} />)}
+      <PastOrders orders={(orders || []).filter((o) => !ACTIVE.includes(o.status)).filter(visibleFor('restaurant'))} />
     </div>
+  );
+}
+
+function PastOrders({ orders }) {
+  const [n, setN] = useState(15);
+  if (!orders.length) return null;
+  const list = [...orders].sort((a, b) => b.createdMs - a.createdMs);
+  return (
+    <details className="setts past-orders">
+      <summary className="board-h">{`${t('Past orders')} (${list.length})`}</summary>
+      {list.slice(0, n).map((o) => (
+        <div key={o.id} className="past-row">
+          <div className="grow"><b>#{o.code}</b> <StatusChip s={o.status} /><small className="muted">{fmtDateTime(o.createdMs)} · {o.customerName} · {o.items.map((x) => `${x.qty}× ${x.name}`).join(', ')}</small></div>
+          <b>{rupee(o.total)}</b>
+          <HideOrderBtn o={o} role="restaurant" />
+        </div>
+      ))}
+      {list.length > n && <button className="btn ghost small block" onClick={() => setN(n + 30)}>{t('Show more')}</button>}
+    </details>
   );
 }
 
@@ -119,6 +144,8 @@ export function OrderCard({ o, showRest, admin }) {
   const [reject, setReject] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pickTime, setPickTime] = useState(false);
+  const [custom, setCustom] = useState('');
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); } setBusy(false); };
   // accepting sends the order straight to the restaurant's delivery boy (auto-assigned when there is only one)
   const accept = (mins) => run(() => setStatus(o, 'preparing', { prepMins: mins, 'timeline.accepted': Date.now(),
@@ -129,7 +156,7 @@ export function OrderCard({ o, showRest, admin }) {
     <div className={'ocard st-' + o.status}>
       <div className="row between">
         <span><b>#{o.code}</b> <small className="muted">{fmtTime(o.createdMs)} · {age < 1 ? t('just now') : `${age} min`}</small></span>
-        <StatusChip s={o.status} />
+        <span className="row gap" style={{ gap: 6 }}><StatusChip s={o.status} />{admin && <HideOrderBtn o={o} role="admin" />}</span>
       </div>
       {showRest && <div className="small"><Icon name="store" size={14} /> <b data-notr="">{o.restaurantName}</b></div>}
       <div className="oc-items">
@@ -150,14 +177,24 @@ export function OrderCard({ o, showRest, admin }) {
       )}
       {admin && <div className="tiny muted" data-notr="">{o.address?.line}</div>}
 
-      {o.status === 'placed' && (
-        <>
-          <p className="tiny muted">Accept with cooking time:</p>
-          <div className="row gap wrap">
-            {[10, 20, 30, 45].map((m) => <button key={m} className="btn primary small grow" disabled={busy} onClick={() => accept(m)}>{`${m} min`}</button>)}
+      {o.status === 'placed' && !pickTime && (
+        <div className="acc-row">
+          <button className="btn reject-btn" disabled={busy} onClick={() => setReject(true)}><Icon name="x" size={18} /> Reject</button>
+          <button className="btn accept-btn" disabled={busy} onClick={() => setPickTime(true)}><Icon name="check" size={18} /> Accept</button>
+        </div>
+      )}
+      {o.status === 'placed' && pickTime && (
+        <div className="time-pick">
+          <p className="small"><b>{t('Food will be ready in how many minutes?')}</b></p>
+          <div className="time-grid">
+            {[10, 15, 20, 25, 30, 35, 40].map((m) => <button key={m} className="btn time-btn" disabled={busy} onClick={() => accept(m)}>{`${m} min`}</button>)}
           </div>
-          <button className="btn ghost danger-text small block" disabled={busy} onClick={() => setReject(true)}>Reject</button>
-        </>
+          <div className="row gap">
+            <input className="input slim grow" inputMode="numeric" placeholder={t('Other — type minutes')} value={custom} onChange={(e) => setCustom(e.target.value.replace(/\D/g, '').slice(0, 3))} />
+            <button className="btn accept-btn small" disabled={busy || !(Number(custom) > 0)} onClick={() => accept(Number(custom))}>OK</button>
+          </div>
+          <button className="btn ghost small block" onClick={() => setPickTime(false)}>Back</button>
+        </div>
       )}
       {['accepted', 'preparing'].includes(o.status) && (
         <button className="btn green block" disabled={busy} onClick={() => run(() => setStatus(o, 'ready'))}><Icon name="check" size={18} /> Food is ready</button>
@@ -297,7 +334,7 @@ export function Earnings({ orders, title }) {
 
 function ShopSettings({ rest }) {
   const toast = useToast();
-  const [f, setF] = useState({ tagline: rest.tagline || '', address: rest.address || '', prepMins: rest.prepMins || 20, ownerPhone: rest.ownerPhone || '', fssai: rest.fssai || '', gstin: rest.gstin || '', radiusKm: rest.radiusKm ?? 5, minOrder: rest.minOrder ?? 50, openTime: rest.openTime || '', closeTime: rest.closeTime || '' });
+  const [f, setF] = useState({ tagline: rest.tagline || '', address: rest.address || '', prepMins: rest.prepMins || 20, ownerPhone: rest.ownerPhone || '', fssai: rest.fssai || '', gstin: rest.gstin || '', radiusKm: rest.radiusKm ?? 5, minOrder: rest.minOrder ?? 50, openTime: rest.openTime || '', closeTime: rest.closeTime || '', priceInclGst: rest.priceInclGst !== false });
   const [busy, setBusy] = useState(false);
   const save = async (extra = {}) => {
     setBusy(true);
@@ -326,13 +363,21 @@ function ShopSettings({ rest }) {
           <Field label="Delivery area (km)"><input className="input" inputMode="decimal" value={f.radiusKm} onChange={(e) => setF({ ...f, radiusKm: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
           <Field label="Minimum order ₹"><input className="input" inputMode="numeric" value={f.minOrder} onChange={(e) => setF({ ...f, minOrder: e.target.value.replace(/\D/g, '') })} /></Field>
         </div>
+        <div className="gst-mode">
+          <p className="small"><b>{t('Menu prices are…')}</b></p>
+          <div className="seg">
+            <button type="button" className={f.priceInclGst !== false ? 'on' : ''} onClick={() => setF({ ...f, priceInclGst: true })}>{t('With GST')}</button>
+            <button type="button" className={f.priceInclGst === false ? 'on' : ''} onClick={() => setF({ ...f, priceInclGst: false })}>{t('Without GST')}</button>
+          </div>
+          <p className="tiny muted">{f.priceInclGst === false ? t('₹200 dish → bill ₹200 + 5% GST ₹10 = ₹210') : t('₹210 dish → bill shows ₹200 food + ₹10 GST = ₹210')}</p>
+        </div>
         <div className="row gap">
           <Field label="Opens at"><input className="input" type="time" value={f.openTime} onChange={(e) => setF({ ...f, openTime: e.target.value })} /></Field>
           <Field label="Closes at"><input className="input" type="time" value={f.closeTime} onChange={(e) => setF({ ...f, closeTime: e.target.value })} /></Field>
         </div>
         <button className="btn primary block" disabled={busy} onClick={() => save()}>Save</button>
       </div>
-      <UpiEditor value={rest} title="Your UPI — customers pay you directly" hint="Customers' money comes straight into this account. FoodGaon does not hold your money."
+      <UpiEditor noQr value={rest} title="Your UPI ID — customers pay you directly" hint="Customers' money comes straight into this account. FoodGaon does not hold your money."
         onSave={(v) => patch('restaurants', rest.id, v)} />
       <div className="card">
         <h4><Icon name="pin" size={18} /> Shop location on map</h4>

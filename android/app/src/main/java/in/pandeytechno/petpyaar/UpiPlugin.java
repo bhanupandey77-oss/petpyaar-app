@@ -11,6 +11,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.ActivityCallback;
+import androidx.activity.result.ActivityResult;
 
 import java.util.List;
 
@@ -52,6 +54,8 @@ public class UpiPlugin extends Plugin {
         return "data:image/png;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP);
     }
 
+    /** Opens the UPI app and waits for it to come back; resolves with the UPI app's own answer
+     *  { status: SUCCESS | SUBMITTED | FAILURE | CANCELLED | UNKNOWN, txnId, txnRef, responseCode, raw } */
     @PluginMethod
     public void pay(PluginCall call) {
         String url = call.getString("url");
@@ -59,18 +63,48 @@ public class UpiPlugin extends Plugin {
         if (url == null) { call.reject("url missing"); return; }
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (pkg != null && !pkg.isEmpty()) {
                 intent.setPackage(pkg);
-                getActivity().startActivity(intent);
+                if (intent.resolveActivity(getContext().getPackageManager()) == null) { call.reject("No UPI app"); return; }
+                startActivityForResult(call, intent, "upiResult");
             } else {
                 Intent chooser = Intent.createChooser(intent, "UPI ऐप चुनें / Choose UPI app");
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getActivity().startActivity(chooser);
+                startActivityForResult(call, chooser, "upiResult");
             }
-            call.resolve();
         } catch (Exception e) {
             call.reject("No UPI app", e);
         }
+    }
+
+    @ActivityCallback
+    private void upiResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        JSObject ret = new JSObject();
+        String raw = "";
+        Intent data = result.getData();
+        if (data != null) {
+            raw = data.getStringExtra("response");
+            if (raw == null) raw = data.getStringExtra("Status") != null ? ("Status=" + data.getStringExtra("Status") + "&txnId=" + data.getStringExtra("txnId") + "&txnRef=" + data.getStringExtra("txnRef")) : "";
+        }
+        String status = "UNKNOWN"; String txnId = ""; String txnRef = ""; String code = "";
+        if (raw != null && !raw.isEmpty()) {
+            for (String part : raw.split("&")) {
+                String[] kv = part.split("=", 2);
+                if (kv.length < 2) continue;
+                String k = kv[0].trim().toLowerCase(); String v = kv[1].trim();
+                if (k.equals("status")) status = v.toUpperCase();
+                else if (k.equals("txnid")) txnId = v;
+                else if (k.equals("txnref") || k.equals("approvalrefno")) { if (txnRef.isEmpty()) txnRef = v; }
+                else if (k.equals("responsecode")) code = v;
+            }
+        } else if (result.getResultCode() == android.app.Activity.RESULT_CANCELED) {
+            status = "CANCELLED";
+        }
+        ret.put("status", status);
+        ret.put("txnId", txnId);
+        ret.put("txnRef", txnRef);
+        ret.put("responseCode", code);
+        ret.put("raw", raw == null ? "" : raw);
+        call.resolve(ret);
     }
 }

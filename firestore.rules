@@ -35,10 +35,16 @@ service cloud.firestore {
     match /offers/{id} {
       allow read: if true;
       allow write: if isAdmin();
+      // a restaurant may run its own offers (it pays the discount itself)
+      allow create: if ownsRest(request.resource.data.restaurantId) && request.resource.data.fundedBy == 'restaurant';
+      allow update: if ownsRest(resource.data.restaurantId) && request.resource.data.restaurantId == resource.data.restaurantId && request.resource.data.fundedBy == 'restaurant';
+      allow delete: if ownsRest(resource.data.restaurantId);
     }
     match /banners/{id} {
       allow read: if true;
       allow write: if isAdmin();
+      allow create: if ownsRest(request.resource.data.restaurantId);
+      allow update, delete: if ownsRest(resource.data.restaurantId);
     }
     match /staff/{phone} {
       allow read: if phone == ph() || isAdmin();
@@ -69,7 +75,7 @@ service cloud.firestore {
     }
     match /orders/{id} {
       allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid
-                    && request.resource.data.status == 'placed';
+                    && request.resource.data.status in ['placed', 'awaiting_payment'];
       allow read: if signedIn() && (
                        resource.data.customerUid == request.auth.uid
                     || isAdmin()
@@ -81,9 +87,10 @@ service cloud.firestore {
                     || (isRider() && (resource.data.riderPhone == ph()
                          || (resource.data.riderPhone == '' && resource.data.restaurantId == riderOf() && request.resource.data.riderPhone == ph())))
                     || (signedIn() && resource.data.customerUid == request.auth.uid
-                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs', 'riderRating', 'reviewTags', 'reviewMs'])
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs', 'riderRating', 'reviewTags', 'reviewMs', 'payment', 'upiStatus', 'upiTxn', 'upiRef', 'hide'])
                          && (request.resource.data.status == resource.data.status
-                             || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')));
+                             || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')
+                             || (resource.data.status == 'awaiting_payment' && request.resource.data.status in ['placed', 'payment_failed'])));
       allow delete: if isAdmin();
     }
     match /settlements/{id} {

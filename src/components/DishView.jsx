@@ -21,6 +21,8 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
   const pics = (it.gallery && it.gallery.length ? it.gallery : [it.img]).filter(Boolean);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [full, setFull] = useState(false);
+  const [hint, setHint] = useState(true);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const track = useRef(null);
   const imgRefs = useRef([]);
@@ -62,11 +64,13 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
             onScroll={(e) => { const w = e.currentTarget.clientWidth; const k = Math.round(e.currentTarget.scrollLeft / w); if (k !== i && Math.abs(e.currentTarget.scrollLeft - k * w) < 4) setI(k); }}>
             {pics.map((p, k) => (
               <div key={p + k} className={'dv-slide' + (k === i ? ' on' : '')}>
-                <img ref={(el) => { imgRefs.current[k] = el; }} src={p} alt="" className={'kb' + (k % 3)} />
+                <img ref={(el) => { imgRefs.current[k] = el; }} src={p} alt="" className={'kb' + (k % 3)} onClick={() => { setFull(true); setPaused(true); }} />
               </div>
             ))}
           </div>
           <div className="dv-shade" />
+          {pics.length > 1 && <span className="dv-count">{`${i + 1}/${pics.length}`}</span>}
+          {pics.length > 1 && hint && <span className="dv-swipe" onAnimationEnd={() => setHint(false)}>👆 {t('Swipe for more photos')}</span>}
           <div className="steam-wisps" aria-hidden="true"><span /><span /><span /><span /></div>
           <FloatingVeggies count={6} seed={(it.name || '').length} className="dv-veg" />
           <button className="dv-nav l" onClick={() => setI((i - 1 + pics.length) % pics.length)} aria-label="Previous photo" />
@@ -78,6 +82,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
           </div>
         </div>
 
+        {full && <PhotoViewer pics={pics} start={i} title={it.name} onClose={(k) => { setFull(false); setPaused(false); setI(k); }} />}
         {pics.length > 1 && (
           <div className="dv-thumbs">
             {pics.map((p, k) => <button key={p + k} className={k === i ? 'on' : ''} onClick={() => setI(k)}><Img src={p} alt="" /></button>)}
@@ -121,5 +126,29 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+/* Full-screen photo viewer: swipe left/right, pinch/double-tap zoom, dots */
+function PhotoViewer({ pics, start, title, onClose }) {
+  const [k, setK] = useState(start);
+  const [zoom, setZoom] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { const el = ref.current; if (el) el.scrollTo({ left: start * el.clientWidth }); }, []); // eslint-disable-line
+  const go = (n) => { const el = ref.current; const m = (n + pics.length) % pics.length; if (el) el.scrollTo({ left: m * el.clientWidth, behavior: 'smooth' }); setK(m); setZoom(false); };
+  return (
+    <div className="pv-wrap" role="dialog" aria-label={title}>
+      <div className="pv-top"><b>{title}</b><span>{`${k + 1} / ${pics.length}`}</span><button className="icon-btn round" onClick={() => onClose(k)} aria-label="Close"><Icon name="x" stroke={2.6} /></button></div>
+      <div className="pv-track" ref={ref} onScroll={(e) => { const w = e.currentTarget.clientWidth; const n = Math.round(e.currentTarget.scrollLeft / w); if (n !== k && Math.abs(e.currentTarget.scrollLeft - n * w) < 4) { setK(n); setZoom(false); } }}>
+        {pics.map((p, n) => (
+          <div key={p + n} className="pv-slide">
+            <img src={p} alt="" className={zoom && n === k ? 'zoom' : ''} onDoubleClick={() => setZoom((z) => !z)} onClick={() => setZoom((z) => !z)} />
+          </div>
+        ))}
+      </div>
+      {pics.length > 1 && <button className="pv-nav l" onClick={() => go(k - 1)} aria-label="Previous"><Icon name="back" size={26} /></button>}
+      {pics.length > 1 && <button className="pv-nav r" onClick={() => go(k + 1)} aria-label="Next"><Icon name="right" size={26} /></button>}
+      <div className="pv-dots">{pics.map((p, n) => <i key={p + n} className={n === k ? 'on' : ''} onClick={() => go(n)} />)}</div>
+    </div>
   );
 }

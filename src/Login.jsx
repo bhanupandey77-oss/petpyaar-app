@@ -134,7 +134,7 @@ export default function Login({ onClose, startStep = 'phone', startMode = 'login
           <form onSubmit={verify} className="login-form">
             <h3>Enter OTP</h3>
             <p className="muted small">{mock ? `+91 ${phone}` : `Sent to +91 ${phone}`} · <button type="button" className="link" onClick={() => { setStep('phone'); setOtp(''); }}>Change</button></p>
-            {mock && <div className="mock-otp"><Icon name="info" size={16} /> <span>Testing mode: enter OTP <b data-notr="">{MOCK_OTP}</b></span></div>}
+            {mock && <div className="mock-otp big" data-notr=""><span>Please enter <b>{MOCK_OTP}</b> as OTP</span></div>}
             <input ref={otpRef} className="otp-input" inputMode="numeric" autoComplete="one-time-code" maxLength={mock ? 4 : 6} value={otp} placeholder={mock ? '••••' : '••••••'}
               onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, mock ? 4 : 6); setOtp(v); }} />
             <button id="otp-go" className="btn primary block lg" disabled={busy || otp.length !== (mock ? 4 : 6)}>{busy ? 'Checking…' : 'Verify & continue'}</button>

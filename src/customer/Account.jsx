@@ -11,6 +11,8 @@ export default function Account({ nav, openHisab }) {
   const favs = useFavs();
   const { user, config, roles, setRole, logout, askLogin } = useApp();
   const [credits, setCredits] = useState(false);
+  const [more, setMore] = useState({});
+  React.useEffect(() => { if (credits) import('../data/paragMenu.js').then((m) => setMore(m.PHOTO_CREDITS || {})).catch(() => {}); }, [credits]);
   const [about, setAbout] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
   const [name, setName] = useState('');
@@ -69,6 +71,7 @@ export default function Account({ nav, openHisab }) {
         <p className="small muted">Dish photos are from Wikimedia Commons, used under their free licences. Restaurants may replace them with their own photos.</p>
         <ul className="credits" data-notr="">
           {Object.values(PHOTOS).map((p) => <li key={p.key}><a href={p.page} target="_blank" rel="noreferrer">{decodeURIComponent(p.page.split('File:')[1]).replace(/_/g, ' ')}</a> — {p.author}, {p.license}</li>)}
+          {Object.entries(more).map(([path, [lic, author]]) => { const f = path.split('/').pop(); return <li key={path}><a href={`https://commons.wikimedia.org/wiki/File:${f}`} target="_blank" rel="noreferrer">{decodeURIComponent(f).replace(/_/g, ' ')}</a> — {author || 'Wikimedia Commons'}, {lic}</li>; })}
         </ul>
       </Sheet>
     </div>

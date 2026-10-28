@@ -1,7 +1,8 @@
+import { HideOrderBtn, visibleFor } from '../components/OrderActions.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon, Toggle, Empty, useToast, StatusChip, Logo, BottomNav, Confirm, WaBtn } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
-import { useList, setStatus, useRestaurants, useDoc } from '../lib/data.js';
+import { useList, setStatus, useRestaurants, useDoc , isRealOrder } from '../lib/data.js';
 import { UpiQr, UpiEditor } from '../components/Pay.jsx';
 import PhotoPick from '../components/PhotoPick.jsx';
 import { Field, Sheet } from '../ui.jsx';
@@ -21,7 +22,8 @@ export default function RiderApp() {
   const mine = useList('orders', [['riderPhone', '==', phone]], [phone]);
   const riderOf = staff?.riderOf || '';
   // only orders of MY restaurant, as soon as the restaurant accepts them
-  const free = useList('orders', riderOf ? [['riderPhone', '==', ''], ['restaurantId', '==', riderOf]] : null, [riderOf]);
+  const free0 = useList('orders', riderOf ? [['riderPhone', '==', ''], ['restaurantId', '==', riderOf]] : null, [riderOf]);
+  const free = free0 && free0.filter(isRealOrder);
   const shop = (useRestaurants() || []).find((r) => r.id === riderOf);
   const [online, setOnline] = useState(() => LS.get('pp_online', true));
   const [pos, setPos] = useState(null);
@@ -178,7 +180,7 @@ function RiderMoney({ phone, mine, shop, today }) {
       </div>
       <div className="card">
         <h4>Delivered today</h4>
-        {today.map((o) => <div key={o.id} className="bill"><span>#{o.code} · {fmtTime(o.timeline?.delivered)}</span><span>{o.payment === 'cod' ? `${t('Cash')} ${rupee(o.total)}` : 'UPI'}</span></div>)}
+        {today.filter(visibleFor('rider')).map((o) => <div key={o.id} className="bill"><span>#{o.code} · {fmtTime(o.timeline?.delivered)}</span><span className="row gap" style={{ gap: 6 }}>{o.payment === 'cod' ? `${t('Cash')} ${rupee(o.total)}` : 'UPI'}<HideOrderBtn o={o} role="rider" /></span></div>)}
         {!today.length && <p className="muted small">Nothing yet today</p>}
       </div>
     </div>

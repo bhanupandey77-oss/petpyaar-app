@@ -67,7 +67,7 @@ export function UpiButton({ upiId, upiName, amount, note, refId, label = 'Pay by
 }
 
 /** Edit UPI ID + name + QR photo (used by restaurant shop settings and admin settings) */
-export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hint }) {
+export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hint, noQr }) {
   const toast = useToast();
   const [f, setF] = useState({ upiId: value.upiId || '', upiName: value.upiName || '', upiQr: value.upiQr || '' });
   const [busy, setBusy] = useState(false);
@@ -80,7 +80,8 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
     const id = f.upiId.trim();
     if (id && !UPI_RE.test(id)) { toast(t('UPI ID looks wrong. Example: shopname@okaxis'), 'err'); return; }
     setBusy(true);
-    try { await onSave({ upiId: id, upiName: f.upiName.trim(), upiQr: f.upiQr }); toast(t('Saved')); } catch (er) { console.warn(er); toast(t('Could not save'), 'err'); }
+    if (noQr && !id) { toast(t('Enter your UPI ID'), 'err'); setBusy(false); return; }
+    try { await onSave({ upiId: id, upiName: f.upiName.trim(), upiQr: noQr ? '' : f.upiQr }); toast(t('Saved')); } catch (er) { console.warn(er); toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
   return (
@@ -91,7 +92,7 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
         <input className="input" value={f.upiId} onChange={(e) => setF({ ...f, upiId: e.target.value.replace(/\s/g, '') })} placeholder="shopname@okaxis" autoCapitalize="none" data-notr="" />
       </Field>
       <Field label="Name on UPI account"><input className="input" value={f.upiName} onChange={(e) => setF({ ...f, upiName: e.target.value })} data-notr="" /></Field>
-      <div className="qr-edit">
+      {!noQr && <div className="qr-edit">
         {f.upiQr ? <img src={f.upiQr} alt="QR" /> : <span className="qr-ph"><Icon name="image" size={28} /><small>No QR photo</small></span>}
         <div className="grow">
           <p className="small"><b>QR code photo</b></p>
@@ -102,7 +103,7 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
             {f.upiQr && <button type="button" className="btn small ghost danger-text" onClick={() => setF({ ...f, upiQr: '' })}>Remove</button>}
           </div>
         </div>
-      </div>
+      </div>}
       {f.upiId && UPI_RE.test(f.upiId) && <p className="tiny t-green"><Icon name="check" size={12} /> Customers' UPI apps will open with this ID</p>}
       <button className="btn primary block" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save UPI details'}</button>
     </div>

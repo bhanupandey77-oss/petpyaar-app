@@ -1,10 +1,12 @@
+import { useMenuPack } from '../lib/menuPack.js';
+import { ClearTestOrders } from '../components/OrderActions.jsx';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, Img, Logo, Confirm } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
-import { useRestaurants, useItems, useList, ACTIVE } from '../lib/data.js';
+import { useRestaurants, useItems, useList, ACTIVE , isRealOrder } from '../lib/data.js';
 import { put, patch, remove, bulk, getList, watchList } from '../lib/fb.js';
 import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDateTime, tel, wa } from '../lib/utils.js';
-import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS } from '../data/menu.js';
+import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS, DEMO_OFFER_IDS } from '../data/menu.js';
 import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantApp.jsx';
 import MenuManager from '../restaurant/MenuManager.jsx';
 import Team from '../restaurant/Team.jsx';
@@ -19,10 +21,12 @@ export default function AdminApp() {
   const { logout } = useApp();
   const [tab, setTab] = useState('dash');
   const days = useMemo(() => [todayKey(), dayKey(Date.now() - 86400000)], []);
-  const orders = useList('orders', [['day', 'in', days]], [days.join()]);
+  const orders0 = useList('orders', [['day', 'in', days]], [days.join()]);
+  const orders = orders0 && orders0.filter(isRealOrder);
   const newCount = useNewOrderAlert(orders, 'New order on FoodGaon!');
   useEffect(() => { askNotifyPermission(); window.addEventListener('pointerdown', unlockAudio, { once: true }); }, []);
   useAutoSeed();
+  useMenuPack(useRestaurants(), () => true);
   useEffect(() => { window.__ppBack = () => { if (tab !== 'dash') { setTab('dash'); return true; } return false; }; return () => { window.__ppBack = null; }; });
   return (
     <div className="panel">
@@ -55,7 +59,7 @@ export default function AdminApp() {
 }
 
 /* when the app ships new starter dishes/offers, add the missing ones automatically (never overwrites edits) */
-const SEED_V = 'v4';
+const SEED_V = 'v5';
 function useAutoSeed() {
   const items = useItems();
   const rests = useRestaurants();
@@ -75,7 +79,7 @@ function useAutoSeed() {
       }),
       ...ITEMS.filter((i) => !haveI.has(i.id)).map((i) => ['set', 'items', i.id, i]),
       ...ITEMS.filter((i) => haveI.has(i.id)).map((i) => { const cur = items.find((x) => x.id === i.id); const add = {}; if (!cur.gallery) add.gallery = i.gallery; if (!cur.story && i.story) add.story = i.story; return Object.keys(add).length ? ['set', 'items', i.id, add] : null; }).filter(Boolean),
-      ...OFFERS.map((o) => ['set', 'offers', o.id, o]),
+      ...DEMO_OFFER_IDS.map((id) => ['del', 'offers', id]),
       ...BANNERS.filter((b) => b.id === 'b1').map((b) => ['set', 'banners', b.id, b]),
       ...STAFF.map((x) => ['set', 'staff', x.phone, x]),
       ['set', 'config', 'app', pick(DEFAULT_CONFIG, ['appName', 'firmName', 'firmAddress', 'supportEmail', 'otpMode', 'gstPct', 'commissionPct', 'commissionGstPct', 'restaurantDeliveryCharge', 'minOrder', 'radiusKm', 'upiName'])],
@@ -257,7 +261,8 @@ function Riders() {
   const rests = (useRestaurants() || []).filter((r) => !r.demo);
   const [pick, setPick] = useState(null);
   const r = rests.find((x) => x.id === pick) || rests[0];
-  const orders = useList('orders', r ? [['restaurantId', '==', r.id]] : null, [r?.id]);
+  const orders0 = useList('orders', r ? [['restaurantId', '==', r.id]] : null, [r?.id]);
+  const orders = orders0 && orders0.filter(isRealOrder);
   if (!r) return <div className="pad"><Empty icon="bike" title="No restaurant yet" /></div>;
   return (
     <div className="pad-x">
@@ -332,6 +337,7 @@ function Settings() {
         onSave={(v) => put('config', 'app', v)} />
       <Settlements />
       <GstCard />
+      <ClearTestOrders />
       <SeedCard small />
     </div>
   );

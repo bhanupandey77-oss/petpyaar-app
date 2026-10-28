@@ -73,6 +73,9 @@ export function cartTotals(c) {
 
 /* ---------- orders ---------- */
 export const ACTIVE = ['placed', 'accepted', 'preparing', 'ready', 'picked'];
+/** orders waiting for / failed UPI payment are not real orders yet — restaurants & riders never see them */
+export const UNPAID = ['awaiting_payment', 'payment_failed'];
+export const isRealOrder = (o) => o && !UNPAID.includes(o.status);
 export const r2 = (n) => Math.round(n * 100) / 100;
 
 /** FoodGaon money rules (per order)
@@ -84,16 +87,18 @@ export function billFor({ itemTotal, discount = 0, discountBy = '', rest = {}, c
   const pct = Number(rest.commissionPct ?? config.commissionPct ?? 4.9);
   const cgPct = Number(config.commissionGstPct ?? 18);
   const disc = Math.max(0, Math.min(Number(discount) || 0, itemTotal));
-  const foodIncl = r2(itemTotal - disc);                       // what the customer pays for food, GST included
-  const taxable = r2((foodIncl * 100) / (100 + gstPct));         // food value without GST
-  const gst = r2(foodIncl - taxable);
+  const incl = rest.priceInclGst !== false;                     // restaurant setting: menu prices include GST (default) or not
+  const food = r2(itemTotal - disc);
+  const taxable = incl ? r2((food * 100) / (100 + gstPct)) : food; // food value without GST
+  const gst = incl ? r2(food - taxable) : r2((food * gstPct) / 100);
+  const foodIncl = r2(taxable + gst);                             // what the customer pays for food, GST included
   const deliveryFee = Number(config.customerDeliveryFee || 0);
   const total = r2(foodIncl + deliveryFee);
   const commission = r2((total * pct) / 100);
   const commissionGst = r2((commission * cgPct) / (100 + cgPct));
   const fgCoupon = discountBy === 'admin' ? disc : 0; // FoodGaon gives this back to the restaurant
   const dues = r2(gst + commission - fgCoupon);
-  return { gstPct, commissionPct: pct, taxable, gst, cgst: r2(gst / 2), sgst: r2(gst - r2(gst / 2)), deliveryFee, total, commission, commissionGst, fgCoupon, dues, payable: r2(total - dues), discount: disc, gstIncluded: true };
+  return { gstPct, commissionPct: pct, taxable, gst, cgst: r2(gst / 2), sgst: r2(gst - r2(gst / 2)), deliveryFee, total, commission, commissionGst, fgCoupon, dues, payable: r2(total - dues), discount: disc, gstIncluded: incl, food };
 }
 
 /** weekly settlement cycle: 1-7, 8-14, 15-21, 22-28, 29-end → '2026-11-W1' */
@@ -109,7 +114,7 @@ export function cycleRange(key) {
   return { from, to, label: `${from}-${to} ${mon} ${y}`, dueMs: new Date(Number(y), Number(m) - 1, to + 1).getTime() };
 }
 
-export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note, offer, discount = 0 }) {
+export async function placeOrder({ user, customerName, rest, config, cartData, address, payment, note, offer, discount = 0, status = 'placed' }) {
   const { list, total: itemTotal, kcal } = cartTotals(cartData);
   const discountBy = discount ? (offer?.fundedBy === 'restaurant' ? 'restaurant' : 'admin') : '';
   const b = billFor({ itemTotal, discount, discountBy, rest, config });
@@ -123,13 +128,13 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0, ...(x.onMrp ? { onMrp: true } : {}) })),
     itemTotal, discount: b.discount, offerCode: b.discount ? offer.code : '', discountBy, kcal,
-    taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, gstIncluded: true, deliveryFee: b.deliveryFee, total: b.total,
+    taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, gstIncluded: b.gstIncluded, deliveryFee: b.deliveryFee, total: b.total,
     commissionPct: b.commissionPct, commission: b.commission, commissionGst: b.commissionGst, fgCoupon: b.fgCoupon,
     dues: b.dues, restDelivery: 0, payable: b.payable,
     firmName: config.firmName || 'TechGaon AI Services', firmGstin: config.gstin || '',
     payment, paid: false, paymentClaim: '', note: note || '',
-    status: 'placed', riderPhone: '', riderName: '', prepMins: rest.prepMins || 20,
-    timeline: { placed: now },
+    status, riderPhone: '', riderName: '', prepMins: rest.prepMins || 20,
+    timeline: status === 'placed' ? { placed: now } : { created: now },
   };
   await put('orders', id, order, false);
   return id;

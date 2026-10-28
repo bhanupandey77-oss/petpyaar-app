@@ -1,3 +1,4 @@
+import RestOffers from './RestOffers.jsx';
 import React, { useState } from 'react';
 import { Icon, Toggle, Sheet, Field, useToast, Img, VegMark, Confirm } from '../ui.jsx';
 import { useItems } from '../lib/data.js';
@@ -8,7 +9,7 @@ import { t } from '../i18n/index.js';
 import SmartAdd from './SmartAdd.jsx';
 import PhotoPick from '../components/PhotoPick.jsx';
 
-export default function MenuManager({ restId }) {
+export default function MenuManager({ restId, rest }) {
   const items = (useItems() || []).filter((i) => i.restaurantId === restId);
   const toast = useToast();
   const [edit, setEdit] = useState(null);
@@ -37,6 +38,7 @@ export default function MenuManager({ restId }) {
         <div className="rp-search grow" style={{ margin: 0 }}><Icon name="search" size={18} /><input placeholder="Search dish" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <button className="btn ghost" onClick={() => setEdit({})}><Icon name="plus" size={18} /> Add</button>
       </div>
+      {rest && <RestOffers rest={rest} />}
       <button className="ai-cta" onClick={() => setAi(true)}><span className="ai-spark">✨</span><span className="grow"><b>Add dishes with AI</b><small>Click a photo of your menu card or type dish names — photos, calories & details fill in by themselves</small></span><Icon name="right" size={18} /></button>
       <div className="row between">
         <p className="tiny muted">{`${items.length} dishes · ${items.filter((i) => i.available === false).length} sold out`}</p>

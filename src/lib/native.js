@@ -73,10 +73,13 @@ export async function watchPosition(cb) {
 /* ---------- UPI ---------- */
 const UpiPay = registerPlugin('UpiPay');
 export async function upiApps() { if (!isNative) return []; try { return (await UpiPay.apps()).apps || []; } catch { return []; } }
+/** Opens a UPI app. On the phone app it waits for the UPI app to come back and returns its answer:
+ *  { ok, status: 'SUCCESS'|'SUBMITTED'|'FAILURE'|'CANCELLED'|'UNKNOWN'|'WEB', txnId, txnRef } */
 export async function upiPay(url, pkg) {
-  if (!isNative) { location.href = url; return true; }
-  try { await UpiPay.pay({ url, package: pkg || '' }); return true; } catch {
-    if (pkg) { try { await UpiPay.pay({ url, package: '' }); return true; } catch { /* no UPI app */ } }
-    return false;
+  if (!isNative) { location.href = url; return { ok: true, status: 'WEB' }; }
+  const run = async (p) => { const r = await UpiPay.pay({ url, package: p || '' }); return { ok: true, status: String(r?.status || 'UNKNOWN').toUpperCase(), txnId: r?.txnId || '', txnRef: r?.txnRef || '', raw: r?.raw || '' }; };
+  try { return await run(pkg); } catch {
+    if (pkg) { try { return await run(''); } catch { /* no UPI app */ } }
+    return { ok: false, status: 'NOAPP' };
   }
 }
