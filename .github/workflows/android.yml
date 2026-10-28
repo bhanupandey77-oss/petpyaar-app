@@ -48,6 +48,7 @@ jobs:
         run: |
           mkdir -p out
           cp android/app/build/outputs/apk/debug/app-debug.apk out/PetPyaar-v1.0.${{ github.run_number }}-install.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/FoodGaon.apk
           cp android/app/build/outputs/bundle/release/*.aab out/PetPyaar-v1.0.${{ github.run_number }}-unsigned.aab
           ls -la out
       - name: Publish release
