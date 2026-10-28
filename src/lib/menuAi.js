@@ -47,7 +47,7 @@ export async function pdfPages(file, maxPages = 8) {
     const vp = page.getViewport({ scale: Math.min(3, 2200 / Math.max(vp0.width, vp0.height)) });
     const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
     const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    await page.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise; // 'print' = no requestAnimationFrame (works in background/webview)
     out.push(c.toDataURL('image/jpeg', 0.85));
   }
   return out;
@@ -74,7 +74,7 @@ async function unitsOf(files, onStatus) {
     if (isPdf(f)) {
       onStatus?.('Preparing PDF pages…');
       let pages = [];
-      try { pages = await pdfPages(f, 20); } catch (e) { console.warn('pdf render', e); }
+      try { pages = await withTimeout(pdfPages(f, 20), 60000); } catch (e) { console.warn('pdf render', e); pages = []; }
       if (pages.length) pages.forEach((u, k) => units.push({ label: `${f.name ? 'PDF ' : ''}page ${k + 1}`, part: { inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } } }));
       else units.push({ label: 'PDF', part: { inlineData: { mimeType: 'application/pdf', data: await toB64(f) } } });
     } else {

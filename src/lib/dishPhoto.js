@@ -7,7 +7,7 @@ async function search(q, used, want) {
   const u = `${API}?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15&gsrsearch=${encodeURIComponent(`${q} filetype:bitmap`)}&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=640`;
   let r = null;
   for (let k = 0; k < 4; k++) {
-    try { r = await fetch(u, { headers: { 'Api-User-Agent': 'FoodGaon/1.0 (contact@techgaon.in)' } }); if (r.ok) break; } catch { r = null; }
+    try { r = await fetch(u); if (r.ok) break; } catch { r = null; } // plain GET: no custom header, so no CORS preflight
     await wait(1500 * (k + 1)); // Wikimedia rate limit → back off and retry
   }
   if (!r || !r.ok) return [];
