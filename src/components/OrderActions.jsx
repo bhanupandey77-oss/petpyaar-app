@@ -3,12 +3,12 @@ import { Icon, Confirm, useToast } from '../ui.jsx';
 import { patch, remove, bulk, getList } from '../lib/fb.js';
 import { t } from '../i18n/index.js';
 
-/** Remove an order from MY list. Customer / restaurant / rider: hidden only for them (accounts stay correct).
- *  Admin: deleted permanently (with its review). */
+/** Customer / rider: remove the order from their own list.
+ *  Restaurant / admin: delete the order permanently (with its review). */
 export function HideOrderBtn({ o, role, small = true }) {
   const toast = useToast();
   const [ask, setAsk] = useState(false);
-  const admin = role === 'admin';
+  const admin = role === 'admin' || role === 'restaurant'; // these two delete for good
   const ok = async () => {
     try {
       if (admin) { await remove('orders', o.id); remove('reviews', o.id).catch(() => {}); }

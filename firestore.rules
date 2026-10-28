@@ -91,7 +91,7 @@ service cloud.firestore {
                          && (request.resource.data.status == resource.data.status
                              || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')
                              || (resource.data.status == 'awaiting_payment' && request.resource.data.status in ['placed', 'payment_failed'])));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || ownsRest(resource.data.restaurantId);
     }
     match /settlements/{id} {
       allow create: if ownsRest(request.resource.data.restaurantId) && request.resource.data.status == 'claimed'
@@ -104,7 +104,7 @@ service cloud.firestore {
       allow create, update: if signedIn() && request.resource.data.customerUid == request.auth.uid
                     && get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
                     && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || ownsRest(resource.data.restaurantId);
     }
     match /riderLoc/{phone} {
       allow read: if signedIn();

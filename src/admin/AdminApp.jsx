@@ -4,9 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, Img, Logo, Confirm } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useItems, useList, ACTIVE , isRealOrder } from '../lib/data.js';
-import { put, patch, remove, bulk, getList, watchList } from '../lib/fb.js';
+import { put, patch, remove, bulk, getList, watchList, getOne } from '../lib/fb.js';
 import { rupee, todayKey, dayKey, plain, unlockAudio, askNotifyPermission, fmtDateTime, tel, wa } from '../lib/utils.js';
-import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS, DEMO_OFFER_IDS } from '../data/menu.js';
+import { RESTAURANTS, ITEMS, BANNERS, DEFAULT_CONFIG, STAFF, OFFERS, DEMO_OFFER_IDS, OLD_STAFF, TEST_DATA_BEFORE } from '../data/menu.js';
 import { OrderCard, useNewOrderAlert, Earnings } from '../restaurant/RestaurantApp.jsx';
 import MenuManager from '../restaurant/MenuManager.jsx';
 import Team from '../restaurant/Team.jsx';
@@ -27,6 +27,7 @@ export default function AdminApp() {
   useEffect(() => { askNotifyPermission(); window.addEventListener('pointerdown', unlockAudio, { once: true }); }, []);
   useAutoSeed();
   useMenuPack(useRestaurants(), () => true);
+  useCleanup();
   useEffect(() => { window.__ppBack = () => { if (tab !== 'dash') { setTab('dash'); return true; } return false; }; return () => { window.__ppBack = null; }; });
   return (
     <div className="panel">
@@ -59,7 +60,35 @@ export default function AdminApp() {
 }
 
 /* when the app ships new starter dishes/offers, add the missing ones automatically (never overwrites edits) */
-const SEED_V = 'v5';
+const SEED_V = 'v6';
+/* one-time cleanup before real testing: delete all test orders & their records, remove old staff numbers */
+const CLEAN_V = 'c1';
+function useCleanup() {
+  const toast = useToast();
+  useEffect(() => {
+    if (!TEST_DATA_BEFORE || localStorage.getItem('pp_clean') === CLEAN_V) return;
+    (async () => {
+      try {
+        const cfg = await getOne('config', 'app');
+        if (cfg?.cleanV === CLEAN_V) { localStorage.setItem('pp_clean', CLEAN_V); return; }
+        const old = (l, k = 'createdMs') => l.filter((x) => !x[k] || x[k] < TEST_DATA_BEFORE);
+        const [orders, reviews, pays, setts] = await Promise.all([getList('orders', []), getList('reviews', []), getList('riderPays', []), getList('settlements', [])]);
+        const ops = [
+          ...old(orders).map((o) => ['del', 'orders', o.id]),
+          ...reviews.filter((r) => !orders.some((o) => o.id === r.id) || old(orders).some((o) => o.id === r.id)).map((r) => ['del', 'reviews', r.id]),
+          ...old(pays).map((x) => ['del', 'riderPays', x.id]),
+          ...setts.filter((x) => (x.createdMs || x.claimMs || 0) < TEST_DATA_BEFORE).map((x) => ['del', 'settlements', x.id]),
+          ...OLD_STAFF.flatMap((ph) => [['del', 'staff', ph], ['del', 'riders', ph], ['del', 'riderLoc', ph]]),
+        ];
+        await bulk(ops);
+        await bulk([['set', 'config', 'app', { cleanV: CLEAN_V, cleanedMs: Date.now() }]]);
+        localStorage.setItem('pp_clean', CLEAN_V);
+        toast(t('Old test orders cleared — ready for real testing'));
+      } catch (e) { console.warn('cleanup', e); }
+    })();
+  }, []); // eslint-disable-line
+}
+
 function useAutoSeed() {
   const items = useItems();
   const rests = useRestaurants();

@@ -21,15 +21,15 @@ const HG = { lat: 26.6178, lng: 81.3657 };
 const REAL = { fssai: '', gstin: '', radiusKm: 5, minOrder: 50, riderRate: 20, selfDelivery: true };
 export const RESTAURANTS = [
   {
-    id: 'parag', name: 'Parag Milk Parlour & Restaurant', ownerPhone: '9120799904', ownerName: 'Parag',
+    id: 'parag', name: 'Parag Milk Parlour & Restaurant', ownerPhone: '9415333145', ownerName: 'Parag',
     tagline: 'Rabri, lassi, shakes, paneer & full meals', cuisines: ['northindian', 'lassi', 'sweets'],
     cover: photo('pbm'), rating: 4.7, prepMins: 20, open: true, demo: false, ...REAL,
-    riders: [{ phone: '+911234567890', name: 'Ajay Kumar' }],
+    riders: [{ phone: '+919695256588', name: 'Deepak' }],
     address: 'Main Road, Haidergarh, Barabanki', lat: HG.lat + 0.001, lng: HG.lng + 0.001, sort: 0,
   },
   {
     id: 'raju-lassi', name: 'Raju Lassi', ownerPhone: '9198427160', ownerName: 'Raju', ...REAL,
-    riders: [{ phone: '+911234567891', name: 'Rakesh' }],
+    riders: [],
     tagline: 'Thick lassi, shakes & fresh sweets', cuisines: ['lassi', 'sweets'],
     cover: photo('lassi'), rating: 4.6, prepMins: 10, open: true, demo: false,
     address: 'Main Market, Haidergarh, Barabanki', lat: HG.lat, lng: HG.lng, sort: 1,
@@ -222,11 +222,15 @@ export const DEFAULT_CONFIG = {
 
 export const STAFF = [
   { phone: '+919415213754', name: 'TechGaon Admin', admin: true, restaurant: '', rider: false, riderOf: '' },
-  { phone: '+919120799904', name: 'Parag', admin: false, restaurant: 'parag', rider: false, riderOf: '' },
+  { phone: '+919415333145', name: 'Parag', admin: false, restaurant: 'parag', rider: false, riderOf: '' },
   { phone: '+919198427160', name: 'Raju', admin: false, restaurant: 'raju-lassi', rider: false, riderOf: '' },
-  { phone: '+911234567890', name: 'Ajay Kumar', admin: false, restaurant: '', rider: true, riderOf: 'parag' },
-  { phone: '+911234567891', name: 'Rakesh', admin: false, restaurant: '', rider: true, riderOf: 'raju-lassi' },
+  { phone: '+919695256588', name: 'Deepak', admin: false, restaurant: '', rider: true, riderOf: 'parag' },
 ];
 
 // old starter dishes of Parag, removed when the real menu pack is installed
 export const PARAG_OLD_IDS = ["parag--rabri", "parag--jalebi", "parag--badam_milk", "parag--lassi", "parag--mango_lassi", "parag--choco_shake", "parag--straw_shake", "parag--cold_coffee", "parag--thandai", "parag--kulfi", "parag--rasmalai", "parag--gulab_jamun", "parag--rasgulla", "parag--barfi", "parag--peda", "parag--pbm", "parag--shahi_paneer", "parag--kadai_paneer", "parag--paneer_tikka", "parag--malai_kofta", "parag--dal_makhani", "parag--naan", "parag--roti", "parag--lachha", "parag--jeera_rice", "parag--veg_biryani", "parag--thali", "parag--chole_bhature", "parag--masala_dosa", "parag--chowmein", "parag--paneer_pakora", "parag--pav_bhaji", "parag--sandwich"];
+
+// staff numbers that no longer work for FoodGaon (removed by the admin's one-time cleanup)
+export const OLD_STAFF = ['+919120799904', '+911234567890', '+911234567891'];
+// everything (orders, reviews, rider pays, settlements) created before this moment was test data
+export const TEST_DATA_BEFORE = typeof __BUILD_MS__ !== 'undefined' ? __BUILD_MS__ : 0; // the moment this version was built

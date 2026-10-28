@@ -10,27 +10,32 @@ export default function FreeDelivery({ km = 5, compact }) {
       </div>
       <div className="fd-scene" aria-hidden="true">
         <div className="fd-road"><i /><i /><i /><i /><i /><i /></div>
-        <svg className="fd-scooter" viewBox="0 0 120 80" width="96" height="64">
+        <svg className="fd-scooter" viewBox="0 0 140 100" width="112" height="80">
           <g className="fd-bounce">
-            {/* delivery box */}
-            <rect x="12" y="14" width="30" height="24" rx="4" fill="#e8461a" />
-            <rect x="12" y="14" width="30" height="7" rx="3" fill="#ff7a45" />
-            <text x="27" y="33" textAnchor="middle" fontSize="9" fontWeight="900" fill="#fff" fontFamily="sans-serif">FG</text>
-            {/* rider */}
-            <circle cx="66" cy="14" r="8" fill="#ffd34d" stroke="#2b1d12" strokeWidth="2" />
-            <path d="M58 14 a8 8 0 0 1 16 0 z" fill="#e8461a" />
-            <path d="M62 22 L56 42 L70 42 L74 28 Z" fill="#1e9e55" />
-            <path d="M70 30 L86 34" stroke="#2b1d12" strokeWidth="4" strokeLinecap="round" />
+            {/* delivery box on the rear rack */}
+            <rect x="6" y="30" width="34" height="28" rx="5" fill="#e8461a" stroke="#2b1d12" strokeWidth="2.5" />
+            <rect x="6" y="30" width="34" height="8" rx="4" fill="#ff7a45" stroke="#2b1d12" strokeWidth="2.5" />
+            <text x="23" y="53" textAnchor="middle" fontSize="11" fontWeight="900" fill="#fff" fontFamily="system-ui, sans-serif">FG</text>
+            {/* rider: leg, body, arm, head with helmet */}
+            <path d="M58 60 L72 60 L76 76 L70 77 L66 66 L58 66 Z" fill="#1f6fb2" stroke="#2b1d12" strokeWidth="2" strokeLinejoin="round" />
+            <path d="M50 34 Q52 26 62 26 L70 28 Q74 40 72 60 L52 62 Q46 48 50 34 Z" fill="#1e9e55" stroke="#2b1d12" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M66 36 Q82 42 96 40" fill="none" stroke="#2b1d12" strokeWidth="6" strokeLinecap="round" />
+            <path d="M66 36 Q82 42 96 40" fill="none" stroke="#1e9e55" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="63" cy="16" r="10" fill="#ffd9b0" stroke="#2b1d12" strokeWidth="2.5" />
+            <path d="M52 16 A11 11 0 0 1 74 14 L74 18 L52 18 Z" fill="#e8461a" stroke="#2b1d12" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M70 14 L78 15" stroke="#2b1d12" strokeWidth="2.5" strokeLinecap="round" />
             {/* scooter body */}
-            <path d="M10 46 Q12 40 22 40 L60 40 L70 46 L92 46 L96 30 L102 30 L100 48 Q98 56 88 56 L24 56 Q10 56 10 46 Z" fill="#ffd34d" stroke="#2b1d12" strokeWidth="2.5" />
-            <path d="M96 30 L90 24" stroke="#2b1d12" strokeWidth="3.5" strokeLinecap="round" />
-            <circle cx="104" cy="40" r="3" fill="#fff8c4" className="fd-light" />
+            <path d="M14 62 Q14 56 22 56 L58 56 Q62 56 64 62 L66 70 L98 70 L108 40 L114 40 L112 48 L104 74 Q102 80 94 80 L30 80 Q14 80 14 70 Z" fill="#ffd34d" stroke="#2b1d12" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M42 56 L64 56" stroke="#2b1d12" strokeWidth="5" strokeLinecap="round" />
+            <path d="M108 40 L100 30 M96 30 L106 30" stroke="#2b1d12" strokeWidth="4" strokeLinecap="round" />
+            <circle cx="113" cy="52" r="3.5" fill="#fff8c4" stroke="#2b1d12" strokeWidth="1.5" className="fd-light" />
           </g>
-          {/* wheels */}
-          <g className="fd-wheel" style={{ transformOrigin: '26px 62px' }}><circle cx="26" cy="62" r="10" fill="#2b1d12" /><circle cx="26" cy="62" r="4" fill="#ccc" /><path d="M26 52 V72 M16 62 H36" stroke="#666" strokeWidth="1.5" /></g>
-          <g className="fd-wheel" style={{ transformOrigin: '90px 62px' }}><circle cx="90" cy="62" r="10" fill="#2b1d12" /><circle cx="90" cy="62" r="4" fill="#ccc" /><path d="M90 52 V72 M80 62 H100" stroke="#666" strokeWidth="1.5" /></g>
-          {/* speed lines */}
-          <g className="fd-speed" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M0 30 H8" /><path d="M2 38 H10" /><path d="M0 46 H6" /></g>
+          {/* wheels (spin) */}
+          <g className="fd-wheel" style={{ transformOrigin: '32px 84px' }}><circle cx="32" cy="84" r="13" fill="#2b1d12" /><circle cx="32" cy="84" r="6" fill="#d9d9d9" /><path d="M32 72 V96 M20 84 H44" stroke="#777" strokeWidth="2" /></g>
+          <g className="fd-wheel" style={{ transformOrigin: '106px 84px' }}><circle cx="106" cy="84" r="13" fill="#2b1d12" /><circle cx="106" cy="84" r="6" fill="#d9d9d9" /><path d="M106 72 V96 M94 84 H118" stroke="#777" strokeWidth="2" /></g>
+          {/* speed lines + exhaust puffs */}
+          <g className="fd-speed" stroke="#ffffffcc" strokeWidth="3" strokeLinecap="round"><path d="M0 44 H10" /><path d="M2 54 H12" /><path d="M0 64 H8" /></g>
+          <g className="fd-puff" fill="#ffffff99"><circle cx="8" cy="80" r="4" /><circle cx="2" cy="76" r="3" /></g>
         </svg>
       </div>
     </div>

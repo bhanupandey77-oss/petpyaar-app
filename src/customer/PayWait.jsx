@@ -14,6 +14,7 @@ export default function PayWait({ order, rest, onDone, onClose }) {
   const toast = useToast();
   const [st, setSt] = useState('opening'); // opening | waiting | failed | confirm | saving
   const [msg, setMsg] = useState('');
+  const [last, setLast] = useState('');
   const [app, setApp] = useState(chosenApp());
   const started = useRef(false);
   const link = upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: order.amount, note: `FoodGaon order ${rest.name}`, ref: order.id });
@@ -30,12 +31,16 @@ export default function PayWait({ order, rest, onDone, onClose }) {
     const r = await upiPay(link, app);
     if (!isNative) { setSt('confirm'); return; }
     if (!r.ok) { setSt('failed'); setMsg(t('No UPI app found on this phone')); return; }
-    if (r.status === 'SUCCESS' || r.status === 'SUBMITTED') {
+    setLast(`${r.status}${r.txnId ? ' · ' + r.txnId : ''}`);
+    // only a clear SUCCESS from the UPI app (with a transaction id) sends the order to the restaurant
+    if (r.status === 'SUCCESS' && (r.txnId || r.txnRef)) {
       await confirmPlaced({ upiStatus: r.status, upiTxn: r.txnId || '', upiRef: r.txnRef || '' });
       return;
     }
     setSt('failed');
-    setMsg(r.status === 'FAILURE' ? t('The UPI app says the payment FAILED.') : t('Payment was not completed (you came back without paying).'));
+    setMsg(r.status === 'FAILURE' || r.status === 'FAILED' ? t('The UPI app says the payment FAILED.')
+      : r.status === 'SUBMITTED' || r.status === 'PENDING' ? t('Payment is still pending in your UPI app. Order is not placed yet — check your UPI app, then try again or choose pay on delivery.')
+        : t('Payment was not completed (you came back without paying).'));
   };
   useEffect(() => { if (!started.current) { started.current = true; pay(); } }, []); // eslint-disable-line
 
@@ -74,6 +79,7 @@ export default function PayWait({ order, rest, onDone, onClose }) {
             <h3>{t('Payment not completed')}</h3>
             <p className="small">{msg}</p>
             <p className="tiny muted">{t('Your order has NOT been sent to the restaurant yet.')}</p>
+            {last && <p className="tiny muted" data-notr="">{`UPI: ${last}`}</p>}
             <UpiAppStrip value={app} onChange={setApp} compact />
             <button className="btn primary block lg" onClick={pay}>↻ {`${t('Try paying again')} · ${rupee(order.amount)}`}</button>
             <button className="btn ghost block" onClick={() => switchTo('upi_rider')}>{t('Pay on delivery by UPI instead')}</button>

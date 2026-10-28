@@ -1,5 +1,5 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body><div id="root"></div><script type="module">
+<!doctype html><html><head><meta charset="utf-8"></head><body style="background:#fff7ef;width:380px"><div id="root"></div><script type="module">
 import React from 'react'; import { createRoot } from 'react-dom/client';
-import './src/styles.css'; import { ToastProvider } from './src/ui.jsx'; import SmartAdd from './src/restaurant/SmartAdd.jsx';
-createRoot(document.getElementById('root')).render(React.createElement(ToastProvider, null, React.createElement(SmartAdd, { open: true, onClose(){}, restId: 'x' })));
+import './src/styles.css'; import FreeDelivery from './src/components/FreeDelivery.jsx';
+createRoot(document.getElementById('root')).render(React.createElement(FreeDelivery, { km: 5 }));
 </script></body></html>

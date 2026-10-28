@@ -25,6 +25,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
   const [hint, setHint] = useState(true);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const track = useRef(null);
+  const progScroll = useRef(0); // time of our own (button / auto) scroll — ignore scroll events from it
   const imgRefs = useRef([]);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
     const x = setTimeout(() => setI((v) => (v + 1) % pics.length), SLIDE_MS);
     return () => clearTimeout(x);
   }, [i, paused, pics.length]);
-  useEffect(() => { const el = track.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }); }, [i]);
+  useEffect(() => { const el = track.current; if (el && Math.abs(el.scrollLeft - i * el.clientWidth) > 4) { progScroll.current = Date.now(); el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }); } }, [i]);
 
   const onMove = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -61,7 +62,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
           <div className="dv-bars">{pics.map((p, k) => <i key={p + k} className={k < i ? 'done' : k === i ? 'cur' : ''} style={{ '--d': (paused ? 0 : SLIDE_MS) + 'ms' }}><b key={k === i ? 'a' + i : 'b'} /></i>)}</div>
           <button className="icon-btn round dv-close" onClick={onClose} aria-label="Close"><Icon name="x" stroke={2.6} /></button>
           <div className="dv-track" ref={track} style={{ transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-            onScroll={(e) => { const w = e.currentTarget.clientWidth; const k = Math.round(e.currentTarget.scrollLeft / w); if (k !== i && Math.abs(e.currentTarget.scrollLeft - k * w) < 4) setI(k); }}>
+            onScroll={(e) => { if (Date.now() - progScroll.current < 700) return; const w = e.currentTarget.clientWidth; const k = Math.round(e.currentTarget.scrollLeft / w); if (k !== i && Math.abs(e.currentTarget.scrollLeft - k * w) < 4) { setI(k); setHint(false); } }}>
             {pics.map((p, k) => (
               <div key={p + k} className={'dv-slide' + (k === i ? ' on' : '')}>
                 <img ref={(el) => { imgRefs.current[k] = el; }} src={p} alt="" className={'kb' + (k % 3)} onClick={() => { setFull(true); setPaused(true); }} />
@@ -73,8 +74,8 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
           {pics.length > 1 && hint && <span className="dv-swipe" onAnimationEnd={() => setHint(false)}>👆 {t('Swipe for more photos')}</span>}
           <div className="steam-wisps" aria-hidden="true"><span /><span /><span /><span /></div>
           <FloatingVeggies count={6} seed={(it.name || '').length} className="dv-veg" />
-          <button className="dv-nav l" onClick={() => setI((i - 1 + pics.length) % pics.length)} aria-label="Previous photo" />
-          <button className="dv-nav r" onClick={() => setI((i + 1) % pics.length)} aria-label="Next photo" />
+          {pics.length > 1 && <button className="dv-nav l" onClick={() => { setI((i - 1 + pics.length) % pics.length); setHint(false); }} aria-label="Previous photo"><Icon name="back" size={20} /></button>}
+          {pics.length > 1 && <button className="dv-nav r" onClick={() => { setI((i + 1) % pics.length); setHint(false); }} aria-label="Next photo"><Icon name="right" size={20} /></button>}
           <div className="dv-title">
             <div className="row gap"><VegMark size={15} />{it.bestseller && <span className="best-pill"><Icon name="star" size={11} fill="currentColor" stroke={0} /> Bestseller</span>}</div>
             <div className="row gap"><h2 className="grow">{it.name}</h2><FavBtn id={it.id} big /></div>
@@ -134,12 +135,13 @@ function PhotoViewer({ pics, start, title, onClose }) {
   const [k, setK] = useState(start);
   const [zoom, setZoom] = useState(false);
   const ref = useRef(null);
-  useEffect(() => { const el = ref.current; if (el) el.scrollTo({ left: start * el.clientWidth }); }, []); // eslint-disable-line
-  const go = (n) => { const el = ref.current; const m = (n + pics.length) % pics.length; if (el) el.scrollTo({ left: m * el.clientWidth, behavior: 'smooth' }); setK(m); setZoom(false); };
+  const prog = useRef(0);
+  useEffect(() => { const el = ref.current; prog.current = Date.now(); if (el) el.scrollTo({ left: start * el.clientWidth }); }, []); // eslint-disable-line
+  const go = (n) => { const el = ref.current; const m = (n + pics.length) % pics.length; prog.current = Date.now(); if (el) el.scrollTo({ left: m * el.clientWidth, behavior: 'smooth' }); setK(m); setZoom(false); };
   return (
     <div className="pv-wrap" role="dialog" aria-label={title}>
       <div className="pv-top"><b>{title}</b><span>{`${k + 1} / ${pics.length}`}</span><button className="icon-btn round" onClick={() => onClose(k)} aria-label="Close"><Icon name="x" stroke={2.6} /></button></div>
-      <div className="pv-track" ref={ref} onScroll={(e) => { const w = e.currentTarget.clientWidth; const n = Math.round(e.currentTarget.scrollLeft / w); if (n !== k && Math.abs(e.currentTarget.scrollLeft - n * w) < 4) { setK(n); setZoom(false); } }}>
+      <div className="pv-track" ref={ref} onScroll={(e) => { if (Date.now() - prog.current < 700) return; const w = e.currentTarget.clientWidth; const n = Math.round(e.currentTarget.scrollLeft / w); if (n !== k && Math.abs(e.currentTarget.scrollLeft - n * w) < 4) { setK(n); setZoom(false); } }}>
         {pics.map((p, n) => (
           <div key={p + n} className="pv-slide">
             <img src={p} alt="" className={zoom && n === k ? 'zoom' : ''} onDoubleClick={() => setZoom((z) => !z)} onClick={() => setZoom((z) => !z)} />

@@ -140,7 +140,9 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
   return id;
 }
 export function setStatus(order, status, extra = {}) {
-  return patch('orders', order.id, { status, [`timeline.${status}`]: Date.now(), ...extra });
+  // a rejected / cancelled order is taken off the delivery boy's list at once
+  const off = ['rejected', 'cancelled'].includes(status) && order.status !== 'picked' ? { riderPhone: '', riderName: '' } : {};
+  return patch('orders', order.id, { status, [`timeline.${status}`]: Date.now(), ...off, ...extra });
 }
 
 /* ---------- favourite dishes ❤️ (saved on the customer's account, or on this phone when logged out) ---------- */

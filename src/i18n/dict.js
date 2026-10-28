@@ -1000,3 +1000,7 @@ DICT.push(
   ['Shop photo', 'दुकान की फ़ोटो', 'दुकान क फोटो'], ['Coupon code needs 4+ letters', 'कूपन कोड में कम से कम 4 अक्षर चाहिए', 'कूपन कोड मा कम से कम 4 अच्छर चाही'],
   ['AI could not make the offer — check internet and try again', 'AI ऑफ़र नहीं बना पाया — इंटरनेट जाँचकर फिर कोशिश करें', 'AI ऑफर नाहीं बनाय पावा — इंटरनेट जाँच के फिर कोसिस करा'],
 );
+DICT.push(
+  ['Old test orders cleared — ready for real testing', 'पुराने टेस्ट ऑर्डर मिट गए — अब असली टेस्टिंग के लिए तैयार', 'पुरान टेस्ट ऑर्डर मेट गए — अब असली टेस्टिंग बरे तैयार'],
+  ['Payment is still pending in your UPI app. Order is not placed yet — check your UPI app, then try again or choose pay on delivery.', 'भुगतान अभी UPI ऐप में बाकी है। ऑर्डर अभी नहीं बना — UPI ऐप देखें, फिर दोबारा भुगतान करें या डिलीवरी पर भुगतान चुनें।', 'भुगतान अबहीं UPI ऐप मा बाकी बा। ऑर्डर अबहीं नाहीं बना — UPI ऐप देखा, फिर दुबारा भुगतान करा या डिलीवरी पे भुगतान चुना।'],
+);
