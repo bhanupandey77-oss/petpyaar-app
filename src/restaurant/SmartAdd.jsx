@@ -240,7 +240,7 @@ export default function SmartAdd({ open, onClose, restId }) {
         <div className="card ai-fail">
           <b className="t-red">⚠️ {t('AI could not read the menu')}</b>
           <p className="small">{t(fail.reason)}</p>
-          {fail.raw && <details><summary className="tiny muted">Details</summary><code className="tiny">{fail.raw.slice(0, 400)}</code></details>}
+          {fail.raw && <details open><summary className="tiny muted">Details</summary><code className="tiny">{fail.raw.slice(0, 400)}</code></details>}
           <button className="btn primary block" onClick={() => readAI()}>↻ {t('Try AI again')}</button>
           <button className="btn ghost block" onClick={readOffline}>{t('Read offline (less accurate — check every name & price)')}</button>
           <button className="btn ghost block" onClick={() => { setFail(null); setMode('type'); }}>{t('Type names')}</button>

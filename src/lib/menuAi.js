@@ -87,11 +87,13 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((_, bad) => setTimeo
 export function aiReason(e) {
   const m = String(e?.message || e || '');
   if (/timeout/i.test(m)) return 'AI took too long (slow internet?)';
-  if (/fetch|network|Failed to fetch|offline/i.test(m)) return 'No internet / network blocked';
-  if (/429|quota|exhaust|rate/i.test(m)) return 'AI daily free limit reached — try after some time';
-  if (/403|permission|API key|referer|blocked/i.test(m)) return 'AI access blocked for this app (API key)';
-  if (/404|not found/i.test(m)) return 'AI model not available';
+  if (/\[429|quota|exhaust|RESOURCE_EXHAUSTED/i.test(m)) return 'AI daily free limit reached — try after some time';
+  if (/\[40[13]|PERMISSION_DENIED|API key|referer|blocked/i.test(m)) return 'AI access blocked for this app (API key)';
+  if (/\[404|not found/i.test(m)) return 'AI model not available';
+  if (/\[400|INVALID_ARGUMENT/i.test(m)) return 'AI could not accept this file';
+  if (/\[5\d\d/.test(m)) return 'AI server busy — try again';
   if (/JSON|Unexpected token/i.test(m)) return 'AI reply was incomplete';
+  if (/Failed to fetch|NetworkError|network|offline/i.test(m)) return 'No internet / network blocked';
   return m.slice(0, 120) || 'AI error';
 }
 
@@ -138,7 +140,7 @@ ${keys}
       }));
       if (!dishes.length) throw new Error('AI found no dishes');
       return { dishes, engine: name };
-    } catch (e) { console.warn('menu AI', name, e); errs.push(e); if (/429|quota|fetch|network|403|API key/i.test(String(e?.message))) break; }
+    } catch (e) { console.warn('menu AI', name, e); errs.push(e); if (/\[429|\[40[13]|quota|API key/i.test(String(e?.message))) break; }
   }
   const err = new Error(aiReason(errs[errs.length - 1]));
   err.raw = errs.map((e) => String(e?.message || e)).join(' | ');
