@@ -1034,3 +1034,4 @@ DICT.push(
   ['Check in your bank / UPI app that the money has come, then accept.', 'अपने बैंक/UPI ऐप में पैसा आया है, देखकर ही Accept करें।', 'आपन बैंक/UPI ऐप मा पइसा आवा है, देख के ही Accept करा।'],
   ['Checked — Accept', 'जाँच लिया — Accept', 'जाँच लिहा — Accept'], ['Customer’s payment screenshots (tap to enlarge)', 'ग्राहक के भुगतान के स्क्रीनशॉट (टैप करके बड़ा देखें)', 'ग्राहक क भुगतान स्क्रीनशॉट (टैप कइके बड़ा देखा)'],
 );
+DICT.push(['Pay {}', '{} भुगतान करें', '{} भुगतान करा']);

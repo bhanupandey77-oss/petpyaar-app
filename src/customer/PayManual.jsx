@@ -80,7 +80,7 @@ export default function PayManual({ order, rest, onDone, onClose }) {
     <div className="pm-wrap">
       <div className="pm-top">
         <button className="icon-btn round" onClick={cancel} aria-label="Back"><Icon name="back" size={22} /></button>
-        <div><small data-notr="">{`${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{`${rupee(order.amount)} ${t('pay')}`}</h2></div>
+        <div><small data-notr="">{`${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{t('Pay {}').replace('{}', rupee(order.amount))}</h2></div>
       </div>
       <div className="pm-body">
         <div className="pm-step">{t('Pay by UPI ID, mobile number or the QR below — then upload the payment screenshot or photo below.')}</div>
