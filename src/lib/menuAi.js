@@ -66,19 +66,23 @@ export async function pdfText(file) {
   return lines.join('\n');
 }
 
-/* Build the parts list sent to Gemini */
-async function partsOf(files, onStatus) {
-  const parts = [];
+/* Split the input into small "units" (one photo or one PDF page each) so even a 200-dish menu
+   is read completely — one big request would hit the AI's answer-length limit. */
+async function unitsOf(files, onStatus) {
+  const units = [];
   for (const f of files) {
     if (isPdf(f)) {
-      if (f.size <= 14 * 1024 * 1024) parts.push({ inlineData: { mimeType: 'application/pdf', data: await toB64(f) } });
-      else { onStatus?.('Big PDF — preparing pages…'); (await pdfPages(f)).forEach((u) => parts.push({ inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } })); }
+      onStatus?.('Preparing PDF pages…');
+      let pages = [];
+      try { pages = await pdfPages(f, 20); } catch (e) { console.warn('pdf render', e); }
+      if (pages.length) pages.forEach((u, k) => units.push({ label: `${f.name ? 'PDF ' : ''}page ${k + 1}`, part: { inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } } }));
+      else units.push({ label: 'PDF', part: { inlineData: { mimeType: 'application/pdf', data: await toB64(f) } } });
     } else {
       const u = await compressImage(f, 2600, 2600000);
-      parts.push({ inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } });
+      units.push({ label: `photo ${units.length + 1}`, part: { inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } } });
     }
   }
-  return parts;
+  return units;
 }
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, bad) => setTimeout(() => bad(new Error('timeout')), ms))]);
@@ -97,54 +101,90 @@ export function aiReason(e) {
   return m.slice(0, 120) || 'AI error';
 }
 
-export async function readMenuWithAI(files, library, onStatus) {
-  const list = Array.isArray(files) ? files : [files];
-  const parts = await partsOf(list, onStatus);
+const clean = (d) => ({
+  name: String(d.name).trim().slice(0, 60),
+  price: Math.round(Number(String(d.price ?? '').replace(/[^\d.]/g, '')) || 0),
+  cat: CATS.includes(d.category) ? d.category : '',
+  photoKey: String(d.photoKey || ''),
+  search: String(d.search || d.name || '').slice(0, 60),
+  kcal: Math.round(Number(d.kcal) || 0),
+  qty: String(d.serving || '').slice(0, 30),
+  desc: String(d.desc || '').slice(0, 80),
+  story: String(d.hindiLine || '').slice(0, 140),
+  veg: d.veg !== false,
+  onMrp: d.onMrp === true,
+});
+
+function promptFor(library) {
   const keys = library.map((d) => `${d.key} = ${d.name}`).join('\n');
-  const prompt = `These ${parts.length > 1 ? `${parts.length} images/pages are` : 'image/PDF is'} the MENU CARD of one Indian vegetarian restaurant (Hindi and/or English, columns, decorative fonts, maybe handwritten or a photo taken at an angle).
-TASK: List EVERY dish exactly as printed with its correct price.
+  return `This image is ONE PAGE of the MENU CARD of an Indian vegetarian restaurant (Hindi and/or English, 1-3 columns, decorative fonts, maybe handwritten or a photo taken at an angle). The page may also be a cover page or notes page with no dishes — then return {"dishes":[]}.
+TASK: List EVERY dish on this page exactly as printed with its correct price. Do not stop early — long pages can have 60+ dishes; include all of them, in every column.
 RULES:
 - Read carefully row by row and column by column. The price belongs to the dish on the SAME row / nearest on the right. Never shift prices between rows.
 - Read the full number (e.g. 120 not 12, 1,250 = 1250). Ignore "Rs", "₹", "/-".
-- If the price is written as "On MRP", "MRP", "As per MRP" or "एमआरपी" (packaged items like water bottle, cold drink, chips, ice-cream cups) set onMrp: true and price: 0 — unless an exact number is printed, then put that number and onMrp: true.
-- If a dish has several prices (Half/Full, Small/Medium/Large, 250g/500g/1kg, Plate/Piece) make ONE entry per price and add the size in brackets, e.g. "Paneer Butter Masala (Half)".
-- If a section heading gives the size/price (e.g. "All Shakes ₹80"), apply it to each dish under it.
+- If the price is written as "On MRP", "MRP", "As per MRP" or "एमआरपी" (packaged items like water bottle, cold drink, curd cup) set onMrp: true and price: 0 — unless an exact number is printed, then put that number and onMrp: true.
+- If a dish has several prices (Half/Full, Small/Medium/Large, 250g/500g/1kg, Plate/Piece) make ONE entry per price and add the size in brackets, e.g. "Paneer Butter Masala (Half)". A "-" means that size is not available: skip it.
+- Prices like "10/Pc" or "60/2Pc": price is the number, put the pieces in serving and in the name, e.g. "Rasmalai (2 Pc)".
+- If a section heading gives the size/price (e.g. "All Shakes ₹80"), apply it to each dish under it. A thali/combo is one dish; put its contents in desc.
 - Do NOT invent dishes. Skip headings, phone numbers, address, GST/tax notes, "extra" lines without a dish.
-- name: as a customer would read it, in English letters (transliterate Hindi: "पनीर बटर मसाला" → "Paneer Butter Masala"). Fix obvious spelling mistakes only.
+- name: as a customer would read it, in English letters (transliterate Hindi: "पनीर बटर मसाला" → "Paneer Butter Masala"). Fix obvious spelling mistakes only (e.g. "Cof fee" → "Coffee").
 - category: one of ${CATS.join(', ')}.
 - photoKey: key of the SAME dish from this photo library, only if it is really the same dish (e.g. "Kadai Paneer" ≠ "Paneer Tikka"); else "":
 ${keys}
 - search: 2-4 English words to find a real photo of this dish (e.g. "kadai paneer curry", "veg hakka noodles").
-- kcal (rough, for the serving), serving (e.g. "1 plate", "2 pieces", "1 glass"), desc (≤10 English words).
-- hindiLine: ONE short attractive Hindi line (feeling + hint, not a recipe), different for every dish, e.g. Jalebi: "राष्ट्रीय मिठाई, मीठे रस में डूबी — जो भर दे रिश्तों में मिठास।"
+- kcal (rough, for the serving), serving (e.g. "1 plate", "2 pieces", "1 glass"), desc (≤8 English words).
+- hindiLine: ONE short attractive Hindi line (≤12 words; feeling + hint, not a recipe), different for every dish, e.g. Jalebi: "राष्ट्रीय मिठाई, मीठे रस में डूबी — जो भर दे रिश्तों में मिठास।"
 - veg: false only for egg/chicken/mutton/fish dishes.`;
-  const ai = getAI(app, { backend: new GoogleAIBackend() });
+}
+
+/* Read one page/photo; tries the models in order, waits once on the free-tier rate limit */
+async function readUnit(ai, prompt, unit) {
   const errs = [];
   for (const name of MODELS) {
-    try {
-      onStatus?.(`AI (${name}) is reading dish names & prices…`);
-      const model = getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0, maxOutputTokens: 32768 } }, { timeout: 150000 });
-      const r = await withTimeout(model.generateContent([prompt, ...parts]), 160000);
-      const txt = r.response.text().trim().replace(/^```(json)?/i, '').replace(/```$/, '');
-      const json = JSON.parse(txt);
-      const dishes = (json.dishes || []).filter((d) => d && d.name && String(d.name).trim().length > 1).map((d) => ({
-        name: String(d.name).trim().slice(0, 60),
-        price: Math.round(Number(String(d.price ?? '').replace(/[^\d.]/g, '')) || 0),
-        cat: CATS.includes(d.category) ? d.category : '',
-        photoKey: String(d.photoKey || ''),
-        search: String(d.search || d.name || '').slice(0, 60),
-        kcal: Math.round(Number(d.kcal) || 0),
-        qty: String(d.serving || '').slice(0, 30),
-        desc: String(d.desc || '').slice(0, 80),
-        story: String(d.hindiLine || '').slice(0, 140),
-        veg: d.veg !== false,
-        onMrp: d.onMrp === true,
-      }));
-      if (!dishes.length) throw new Error('AI found no dishes');
-      return { dishes, engine: name };
-    } catch (e) { console.warn('menu AI', name, e); errs.push(e); if (/\[429|\[40[13]|quota|API key/i.test(String(e?.message))) break; }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const model = getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0, maxOutputTokens: 65536 } }, { timeout: 170000 });
+        const r = await withTimeout(model.generateContent([prompt, unit.part]), 180000);
+        const txt = r.response.text().trim().replace(/^```(json)?/i, '').replace(/```$/, '');
+        const json = JSON.parse(txt);
+        return { dishes: (json.dishes || []).filter((d) => d && d.name && String(d.name).trim().length > 1).map(clean), engine: name };
+      } catch (e) {
+        console.warn('menu AI', unit.label, name, e); errs.push(e);
+        const m = String(e?.message);
+        if (/\[40[13]|API key|App Check/i.test(m)) throw e; // access problem: no point trying more
+        if (/\[429|RESOURCE_EXHAUSTED|quota/i.test(m) && attempt === 0) { await new Promise((ok) => setTimeout(ok, 20000)); continue; }
+        break; // next model
+      }
+    }
   }
-  const err = new Error(aiReason(errs[errs.length - 1]));
-  err.raw = errs.map((e) => String(e?.message || e)).join(' | ');
-  throw err;
+  throw errs[errs.length - 1] || new Error('AI error');
+}
+
+export async function readMenuWithAI(files, library, onStatus) {
+  const list = Array.isArray(files) ? files : [files];
+  const units = await unitsOf(list, onStatus);
+  const ai = getAI(app, { backend: new GoogleAIBackend() });
+  const prompt = promptFor(library);
+  const results = new Array(units.length); const errs = []; let next = 0; let doneN = 0; let found = 0; let engine = '';
+  onStatus?.(units.length > 1 ? `AI is reading ${units.length} pages…` : 'AI is reading dish names & prices…', 0);
+  const worker = async () => {
+    while (next < units.length) {
+      const k = next++;
+      try { const r = await readUnit(ai, prompt, units[k]); results[k] = r.dishes; engine = engine || r.engine; found += r.dishes.length; }
+      catch (e) { errs.push({ label: units[k].label, e }); if (/\[40[13]|API key|App Check/i.test(String(e?.message))) { next = units.length; } }
+      doneN++;
+      onStatus?.(units.length > 1 ? `Page ${doneN}/${units.length} read — ${found} dishes so far` : `${found} dishes found`, doneN / units.length);
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  // merge pages in order, drop exact duplicates (same name + price)
+  const seen = new Set(); const dishes = [];
+  results.forEach((l) => (l || []).forEach((d) => { const key = d.name.toLowerCase().replace(/\s+/g, ' ') + '|' + d.price; if (!seen.has(key)) { seen.add(key); dishes.push(d); } }));
+  if (!dishes.length) {
+    const last = errs[errs.length - 1]?.e;
+    const err = new Error(last ? aiReason(last) : 'AI found no dishes');
+    err.raw = errs.map((x) => `${x.label}: ${String(x.e?.message || x.e)}`).join(' | ');
+    throw err;
+  }
+  return { dishes, engine, failed: errs.map((x) => x.label), pages: units.length };
 }

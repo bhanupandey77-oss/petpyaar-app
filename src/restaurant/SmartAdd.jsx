@@ -106,9 +106,10 @@ export default function SmartAdd({ open, onClose, restId }) {
   const [files, setFiles] = useState([]);
   const [fail, setFail] = useState(null); // { reason, raw }
   const [engine, setEngine] = useState('');
+  const [failedPages, setFailedPages] = useState([]);
   const [picking, setPicking] = useState(null); // { id, k } k = photo index, null = add new
 
-  const reset = () => { setRows(null); setRun(null); setDone(false); setOcr(null); setText(''); setFiles([]); setFail(null); setEngine(''); };
+  const reset = () => { setFailedPages([]); setRows(null); setRun(null); setDone(false); setOcr(null); setText(''); setFiles([]); setFail(null); setEngine(''); };
   const close = () => { reset(); onClose(); };
   const upd = (id, ch) => setRows((rs) => rs && rs.map((x) => (x.id === id ? { ...x, ...ch } : x)));
 
@@ -116,7 +117,7 @@ export default function SmartAdd({ open, onClose, restId }) {
   const prepare = (list, eng) => {
     if (!list.length) { toast(t('No dish names found. Try a clearer photo or type the list.'), 'err'); return; }
     const usedKey = {};
-    const out = list.slice(0, 120).map((x, i) => {
+    const out = list.slice(0, 400).map((x, i) => {
       const b = baseOf(x.name);
       let m = (x.photoKey && lib.find((d) => d.key === x.photoKey)) || match(lib, x.name);
       if (m && usedKey[m.key] && usedKey[m.key] !== b) m = null; // a different dish already took this photo
@@ -163,7 +164,8 @@ export default function SmartAdd({ open, onClose, restId }) {
     setOcr({ pct: 10, msg: 'Sending menu to AI…' });
     const tick = setInterval(() => setOcr((o) => (o ? { ...o, pct: Math.min(94, o.pct + 3) } : o)), 1500);
     try {
-      const { dishes, engine: eng } = await readMenuWithAI(list, lib, (msg) => setOcr((o) => ({ ...(o || { pct: 20 }), msg })));
+      const { dishes, engine: eng, failed } = await readMenuWithAI(list, lib, (msg, frac) => setOcr((o) => ({ ...(o || { pct: 20 }), msg, ...(frac != null ? { pct: Math.max(o?.pct || 0, Math.round(15 + frac * 80)) } : {}) })));
+      setFailedPages(failed || []);
       clearInterval(tick); setOcr(null);
       prepare(dishes, eng);
     } catch (er) {
@@ -184,7 +186,7 @@ export default function SmartAdd({ open, onClose, restId }) {
     setRun(Object.fromEntries(list.map((r) => [r.id, 0])));
     const ops = [];
     for (const r of list) {
-      for (let s = 1; s <= STEPS.length; s++) { await new Promise((ok) => setTimeout(ok, 120)); setRun((x) => ({ ...x, [r.id]: s })); }
+      for (let s = 1; s <= STEPS.length; s++) { await new Promise((ok) => setTimeout(ok, list.length > 25 ? 12 : 120)); setRun((x) => ({ ...x, [r.id]: s })); }
       const m = r.m; const g = GENERIC[r.cat] || GENERIC.northindian;
       const key = m?.key; const catImg = CATEGORIES.find((c) => c.id === r.cat)?.img || '';
       const gallery = r.photos.map((p) => p.url).filter(Boolean);
@@ -257,6 +259,7 @@ export default function SmartAdd({ open, onClose, restId }) {
       {rows && !run && (
         <>
           <p className={'small ai-engine' + (engine === 'offline' ? ' warn' : '')}>{engine === 'offline' ? `⚠️ ${t('Read offline — please check every name and price carefully.')}` : engine === 'typed' ? '' : `✨ ${t('Read by AI')}`}</p>
+          {failedPages.length > 0 && <p className="small ai-engine warn">⚠️ {`${t('Could not read')}: ${failedPages.join(', ')} — ${t('add that page again with Camera/Gallery after saving these.')}`}</p>}
           <p className="small">{`${rows.length} ${t('dishes found — check names & prices, untick what you don\'t want. Tap a photo to change it.')}`}</p>
           {rows.map((r) => (
             <div key={r.id} className={'ai-row2' + (r.on ? '' : ' off')}>
