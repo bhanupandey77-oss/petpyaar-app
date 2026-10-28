@@ -34,8 +34,7 @@ export function useUpiApps() {
   useEffect(() => { if (APPS) return; upiApps().then((a) => { APPS = a; setApps(a); }); }, []);
   return apps;
 }
-// CRED (and BHIM) accept app-to-app shop payments; Paytm/PhonePe/GPay often block them without a payment gateway
-const PREF = ['cred', 'bhim', 'amazon', 'mobikwik', 'whatsapp', 'google', 'phonepe', 'paytm'];
+const PREF = ['google', 'phonepe', 'paytm', 'bhim', 'amazon', 'cred', 'mobikwik', 'whatsapp'];
 const rank = (p) => { const i = PREF.findIndex((k) => p.includes(k)); return i < 0 ? 99 : i; };
 export const chosenApp = () => LS.get('pp_upi_pkg', '');
 

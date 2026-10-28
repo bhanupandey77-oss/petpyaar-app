@@ -80,7 +80,6 @@ export default function PayWait({ order, rest, onDone, onClose }) {
             <p className="small">{msg}</p>
             <p className="tiny muted">{t('Your order has NOT been sent to the restaurant yet.')}</p>
             {last && <p className="tiny muted" data-notr="">{`UPI: ${last}`}</p>}
-            <p className="small pw-tip">💡 {t('Paytm / PhonePe / GPay sometimes block this payment. Choose CRED or BHIM below and try again — or pay on delivery.')}</p>
             <UpiAppStrip value={app} onChange={setApp} compact />
             <button className="btn primary block lg" onClick={pay}>↻ {`${t('Try paying again')} · ${rupee(order.amount)}`}</button>
             <button className="btn ghost block" onClick={() => switchTo('upi_rider')}>{t('Pay on delivery by UPI instead')}</button>

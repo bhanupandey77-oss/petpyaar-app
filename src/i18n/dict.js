@@ -1018,6 +1018,3 @@ DICT.push(
   ['No UPI QR found in this photo. Take a clear, straight photo of the QR.', 'इस फ़ोटो में UPI QR नहीं मिला। QR की साफ़, सीधी फ़ोटो लें।', 'ई फोटो मा UPI QR नाहीं मिला। QR क साफ, सीधी फोटो लेव।'],
   ['Could not read the QR', 'QR नहीं पढ़ पाए', 'QR नाहीं पढ़ पाए'],
 );
-DICT.push(
-  ['Paytm / PhonePe / GPay sometimes block this payment. Choose CRED or BHIM below and try again — or pay on delivery.', 'Paytm / PhonePe / GPay कभी-कभी यह भुगतान रोक देते हैं। नीचे CRED या BHIM चुनकर फिर कोशिश करें — या डिलीवरी पर भुगतान चुनें।', 'Paytm / PhonePe / GPay कबहूँ-कबहूँ ई भुगतान रोक देत हैं। नीचे CRED या BHIM चुन के फिर कोसिस करा — या डिलीवरी पे भुगतान चुना।'],
-);
