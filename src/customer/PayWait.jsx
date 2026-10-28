@@ -17,7 +17,7 @@ export default function PayWait({ order, rest, onDone, onClose }) {
   const [last, setLast] = useState('');
   const [app, setApp] = useState(chosenApp());
   const started = useRef(false);
-  const link = upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: order.amount, note: `FoodGaon order ${rest.name}`, ref: order.id });
+  const link = upiLink({ upiId: rest.upiId, upiName: rest.upiName || rest.name, amount: order.amount, note: `FoodGaon order ${rest.name}`, ref: order.id, extra: rest.upiParams });
 
   const confirmPlaced = async (extra) => {
     setSt('saving');

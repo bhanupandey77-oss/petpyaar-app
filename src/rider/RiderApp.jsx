@@ -132,7 +132,7 @@ function DeliveryCard({ o, me, available, phone, name }) {
       {o.payment !== 'cod' && !o.paid && picked && (upiId || shop.upiQr) && (
         <>
           <button className="btn ghost block" onClick={() => setQr(!qr)}><Icon name="upi" size={18} /> {qr ? t('Hide QR') : t('Show restaurant UPI QR to customer')}</button>
-          {qr && <UpiQr upiId={upiId} upiName={shop.upiName || o.restUpiName} upiQr={shop.upiQr} amount={o.total} note={`FoodGaon order ${o.code}`} refId={o.code} size={240} />}
+          {qr && <UpiQr extra={shop.upiParams || o.restUpiParams} upiId={upiId} upiName={shop.upiName || o.restUpiName} upiQr={shop.upiQr} amount={o.total} note={`FoodGaon order ${o.code}`} refId={o.code} size={240} />}
         </>
       )}
 

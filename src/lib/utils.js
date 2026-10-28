@@ -52,11 +52,24 @@ export const wa = (phone, text = '') => { const d = String(phone || '').replace(
 export const plain = (phone) => String(phone || '').replace(/^\+91/, '');
 
 const ascii = (s, d) => { const t = String(s || '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim(); return t || d; };
-export const upiLink = ({ upiId, upiName, amount, note, ref }) =>
+/** UPI payment link. `extra` = merchant details read from the shop's own QR (mc, mode, purpose, orgid, mid…)
+ *  so UPI apps treat it as a payment to a shop (P2M), not to a person. */
+const MERCHANT_KEYS = ['mc', 'purpose', 'mid', 'msid', 'mtid']; // not 'mode' (QR-only) or 'sign' (would break with a new amount)
+export const upiLink = ({ upiId, upiName, amount, note, ref, extra }) =>
   `upi://pay?pa=${String(upiId).trim()}&pn=${encodeURIComponent(ascii(upiName, 'FoodGaon'))}` +
+  MERCHANT_KEYS.filter((k) => extra && extra[k]).map((k) => `&${k}=${encodeURIComponent(extra[k])}`).join('') +
   (amount ? `&am=${Number(amount).toFixed(2)}` : '') + '&cu=INR' +
   `&tn=${encodeURIComponent(ascii(note, 'Food order').slice(0, 50))}` +
   (ref ? `&tr=${encodeURIComponent(ascii(ref, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 30))}` : '');
+/** read a UPI QR text → { upiId, upiName, extra } */
+export function parseUpiQr(text) {
+  const s = String(text || '').trim();
+  if (!/^upi:\/\/pay\?/i.test(s)) return null;
+  const q = new URLSearchParams(s.replace(/^upi:\/\/pay\?/i, ''));
+  const pa = q.get('pa'); if (!pa) return null;
+  const extra = {}; MERCHANT_KEYS.forEach((k) => { if (q.get(k)) extra[k] = q.get(k); });
+  return { upiId: pa, upiName: q.get('pn') || '', extra };
+}
 
 /** Compress a picked image to a small JPEG data URL (for menu photos stored in Firestore) */
 export function compressImage(file, maxSide = 720, maxLen = 180000) {

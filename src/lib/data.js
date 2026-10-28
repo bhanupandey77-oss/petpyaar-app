@@ -125,7 +125,7 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     customerUid: user.uid, customerPhone: phoneOf(user) || (address?.phone ? '+91' + String(address.phone).replace(/\D/g, '').slice(-10) : ''), customerName,
     address, restaurantId: rest.id, restaurantName: rest.name, restaurantPhone: rest.ownerPhone || '', restaurantAddr: rest.address || '',
     restFssai: rest.fssai || '', restGstin: rest.gstin || '',
-    restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
+    restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '', restUpiParams: rest.upiParams || null,
     items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0, ...(x.onMrp ? { onMrp: true } : {}) })),
     itemTotal, discount: b.discount, offerCode: b.discount ? offer.code : '', discountBy, kcal,
     taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, gstIncluded: b.gstIncluded, deliveryFee: b.deliveryFee, total: b.total,

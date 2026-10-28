@@ -268,9 +268,9 @@ function PayBox({ o }) {
       <b>Complete your UPI payment</b>
       <p className="tiny muted">{`Pay ${rupee(o.total)} directly to ${o.restaurantName}`}</p>
       <UpiAppStrip />
-      <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Open UPI app" />
+      <UpiButton extra={o.restUpiParams} upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Open UPI app" />
       <div className="row gap"><button className="btn ghost grow small" onClick={() => setShow(!show)}>{show ? 'Hide QR' : 'Show QR'}</button><button className="btn green grow small" onClick={claim}><Icon name="check" size={16} /> I have paid</button></div>
-      {show && <UpiQr upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} />}
+      {show && <UpiQr extra={o.restUpiParams} upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} />}
     </div>
   );
   // upi on delivery
@@ -279,7 +279,7 @@ function PayBox({ o }) {
       <b>Pay by UPI when your food arrives</b>
       <p className="tiny muted">{`${rupee(o.total)} goes directly to ${o.restaurantName}. The delivery partner will also show the QR.`}</p>
       {o.status === 'picked' && <UpiAppStrip />}
-      {o.status === 'picked' && <UpiButton upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Pay now" />}
+      {o.status === 'picked' && <UpiButton extra={o.restUpiParams} upiId={o.restUpiId} upiName={o.restUpiName} amount={o.total} note={`FoodGaon order ${ref}`} refId={ref} label="Pay now" />}
       {o.status === 'picked' && <button className="btn green block small" onClick={claim}><Icon name="check" size={16} /> I have paid</button>}
     </div>
   );

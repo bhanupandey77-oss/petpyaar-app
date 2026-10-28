@@ -1009,3 +1009,12 @@ DICT.push(
   ['Use a BUSINESS / merchant UPI ID', 'बिज़नेस / मर्चेंट UPI ID ही डालें', 'बिजनेस / मर्चेंट UPI ID ही डारा'],
   ['UPI apps (Paytm, PhonePe, GPay) block app payments to a personal UPI ID like 98XXXXXXXX@upi. Get a free business UPI from Paytm for Business, PhonePe Business or BharatPe and put that ID here.', 'UPI ऐप (Paytm, PhonePe, GPay) निजी UPI ID (जैसे 98XXXXXXXX@upi) पर ऐप से भुगतान रोक देते हैं। Paytm for Business, PhonePe Business या BharatPe से मुफ़्त बिज़नेस UPI लें और वही ID यहाँ डालें।', 'UPI ऐप निजी UPI ID पे ऐप से भुगतान रोक देत हैं। Paytm for Business, PhonePe Business या BharatPe से मुफ्त बिजनेस UPI लेव अउर वही ID हियाँ डारा।'],
 );
+DICT.push(
+  ['Easiest: scan your shop’s UPI QR', 'सबसे आसान: अपनी दुकान का UPI QR स्कैन करें', 'सबसे आसान: आपन दुकान क UPI QR स्कैन करा'],
+  ['FoodGaon reads the UPI ID and merchant code from your QR stand, so customers’ UPI apps accept the payment.', 'FoodGaon आपके QR स्टैंड से UPI ID और मर्चेंट कोड पढ़ लेगा, ताकि ग्राहकों के UPI ऐप भुगतान स्वीकार करें।', 'FoodGaon आपके QR स्टैंड से UPI ID अउर मर्चेंट कोड पढ़ लेई, जेसे ग्राहकन क UPI ऐप भुगतान लेइ लें।'],
+  ['Scan QR', 'QR स्कैन करें', 'QR स्कैन करा'], ['QR from gallery', 'गैलरी से QR', 'गैलरी से QR'], ['Merchant code', 'मर्चेंट कोड', 'मर्चेंट कोड'],
+  ['Shop QR read — merchant details saved with your UPI ID', 'दुकान का QR पढ़ लिया — मर्चेंट विवरण UPI ID के साथ जुड़ गया (Save दबाएँ)', 'दुकान क QR पढ़ लिहा — मर्चेंट जानकारी जुड़ गई (Save दबावा)'],
+  ['QR read. It looks like a personal UPI QR (no merchant code).', 'QR पढ़ लिया, पर यह निजी UPI QR लगता है (मर्चेंट कोड नहीं है)।', 'QR पढ़ लिहा, पर ई निजी UPI QR लागत है (मर्चेंट कोड नाहीं)।'],
+  ['No UPI QR found in this photo. Take a clear, straight photo of the QR.', 'इस फ़ोटो में UPI QR नहीं मिला। QR की साफ़, सीधी फ़ोटो लें।', 'ई फोटो मा UPI QR नाहीं मिला। QR क साफ, सीधी फोटो लेव।'],
+  ['Could not read the QR', 'QR नहीं पढ़ पाए', 'QR नाहीं पढ़ पाए'],
+);
