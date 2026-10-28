@@ -5,7 +5,7 @@ import { Icon, useToast } from '../ui.jsx';
 import { patch, put } from '../lib/fb.js';
 import { saveImage } from '../lib/native.js';
 import { upiLink, rupee, compressImage } from '../lib/utils.js';
-import { t } from '../i18n/index.js';
+import { hi as t } from '../i18n/index.js';
 
 const MAX_SHOTS = 4;
 const fmtMob = (m) => (m ? `${m.slice(0, 5)} ${m.slice(5)}` : '');
@@ -53,7 +53,7 @@ export default function PayManual({ order, rest, onDone, onClose }) {
     return () => document.body.classList.remove('noscroll');
   }, []); // eslint-disable-line
 
-  const copy = async (v, what) => { if (await copyText(v)) toast(t('{} copied').replace('{}', what)); };
+  const copy = async (v, what) => { if (await copyText(v)) toast(t('{} copied', what)); };
   const download = async () => {
     try { const png = await qrCard({ qrSrc: qr, rest, amount: order.amount, code: order.code }); toast((await saveImage(png, `FoodGaon-${order.code}.png`)) ? t('QR saved in your gallery (Pictures/FoodGaon)') : t('Could not save'), 'ok'); }
     catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
@@ -77,10 +77,10 @@ export default function PayManual({ order, rest, onDone, onClose }) {
   const cancel = async () => { try { await patch('orders', order.id, { status: 'payment_failed' }); } catch { /* ignore */ } onClose(); };
 
   return createPortal(
-    <div className="pm-wrap">
+    <div className="pm-wrap" data-notr="">
       <div className="pm-top">
         <button className="icon-btn round" onClick={cancel} aria-label="Back"><Icon name="back" size={22} /></button>
-        <div><small data-notr="">{`${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{t('Pay {}').replace('{}', rupee(order.amount))}</h2></div>
+        <div><small data-notr="">{`${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{t('Pay {}', rupee(order.amount))}</h2></div>
       </div>
       <div className="pm-body">
         <div className="pm-step">{t('Pay by UPI ID, mobile number or the QR below — then upload the payment screenshot or photo below.')}</div>
