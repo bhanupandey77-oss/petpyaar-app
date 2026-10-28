@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber, signOut, updateProfile,
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber, signOut, updateProfile, updatePassword,
   PhoneAuthProvider, GoogleAuthProvider, signInWithCredential, signInWithPopup,
   indexedDBLocalPersistence, browserLocalPersistence, initializeAuth, browserPopupRedirectResolver,
 } from 'firebase/auth';
@@ -95,8 +95,25 @@ export const MOCK_OTP = '1234';
 export const MOCK_DOMAIN = 'login.foodgaon.app';
 const mockEmail = (p10) => `91${p10}@${MOCK_DOMAIN}`;
 const mockPass = (p10) => `FG-${p10}-tg2026`;
+/* the admin number uses its own secret PIN instead of the public test OTP (the PIN is part of its password) */
+export const ADMIN_P10 = '9415213754';
+const ADMIN_PIN_SHA = '1d44804dea45fe6ddce3ac8ce3bd0952cfb5bfa34d5091aa878c0ea17099a4bd';
+const sha = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const wrongOtp = () => Object.assign(new Error('wrong otp'), { code: 'auth/invalid-verification-code' });
+async function adminLogin(code) {
+  const email = mockEmail(ADMIN_P10); const pass = `FG-${ADMIN_P10}-${code}-pin`;
+  try { return await signInWithEmailAndPassword(auth, email, pass); } catch (e) {
+    if (!/invalid-credential|invalid-login|wrong-password/.test(e.code || '')) throw e;
+  }
+  // one-time move from the old test password to the PIN password
+  if ((await sha(`foodgaon-admin:${code}`)) !== ADMIN_PIN_SHA) throw wrongOtp();
+  const r = await signInWithEmailAndPassword(auth, email, mockPass(ADMIN_P10)).catch(() => { throw wrongOtp(); });
+  await updatePassword(r.user, pass);
+  return r;
+}
 export async function mockLogin(phone10, code) {
-  if (String(code) !== MOCK_OTP) throw Object.assign(new Error('wrong otp'), { code: 'auth/invalid-verification-code' });
+  if (phone10 === ADMIN_P10) return adminLogin(String(code));
+  if (String(code) !== MOCK_OTP) throw wrongOtp();
   const email = mockEmail(phone10); const pass = mockPass(phone10);
   try { return await signInWithEmailAndPassword(auth, email, pass); } catch (e) {
     if (!/user-not-found|invalid-credential|invalid-login/.test(e.code || '')) throw e;
