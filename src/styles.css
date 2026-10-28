@@ -822,3 +822,14 @@ body.noscroll .cart-bar, body.noscroll .live-bar { display: none; }
 .fav-group { padding-top: 6px; }
 .fav-rest { width: 100%; background: none; border: 0; padding: 8px 0; border-bottom: 1px dashed #eadbd0; margin-bottom: 4px; text-align: left; color: inherit; }
 .pill { display: inline-flex; min-width: 24px; height: 22px; padding: 0 8px; align-items: center; justify-content: center; border-radius: 11px; background: #ffe7dc; color: #c23a10; font-weight: 800; font-size: .78rem; margin-left: 6px; }
+.ai-files { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ai-files .chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #d9ccf7; border-radius: 14px; padding: 4px 10px; font-size: .8rem; color: var(--ink, #222); width: fit-content; }
+.ai-files .chip button { border: 0; background: none; font-size: 1rem; color: #c33; padding: 0 2px; }
+.ai-thumb-btn { position: relative; border: 0; padding: 0; background: none; flex: none; }
+.ai-thumb-btn i { position: absolute; right: -3px; bottom: -3px; background: #fff; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; box-shadow: 0 1px 3px #0003; color: #555; }
+.ai-spin-box { display: grid; place-items: center; background: #f3eefc; }
+.ai-fail { display: flex; flex-direction: column; gap: 8px; border: 1px solid #f3c1b5; background: #fff6f3; }
+.ai-fail code { white-space: pre-wrap; word-break: break-all; }
+.ai-engine { font-weight: 700; color: #6a3fd8; } .ai-engine.warn { color: #b3261e; }
+.input.price.need { border-color: #e04a2f; background: #fff4f1; }
+.row.wrap { flex-wrap: wrap; }
