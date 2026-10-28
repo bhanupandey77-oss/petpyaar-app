@@ -42,7 +42,7 @@ async function qrCard({ qrSrc, rest, amount, code }) {
 
 /** "Pay now by UPI": UPI ID / mobile / QR → customer pays in any UPI app → uploads the payment screenshot(s).
  *  The order reaches the restaurant only with the screenshots; the restaurant checks them and accepts. */
-export default function PayManual({ order, rest, onDone, onClose }) {
+export default function PayManual({ order, rest, onDone, onClose, submit, cancelFn, label, sendLabel }) {
   const toast = useToast();
   const [qr, setQr] = useState(rest.upiQr || '');
   const [shots, setShots] = useState([]);
@@ -68,19 +68,20 @@ export default function PayManual({ order, rest, onDone, onClose }) {
     if (!shots.length) { toast(t('Upload the payment screenshot first'), 'err'); return; }
     setBusy(true);
     try {
+      if (submit) { await submit(shots); onDone(order.id); setBusy(false); return; }
       await put('payproofs', order.id, { orderId: order.id, restaurantId: rest.id, customerUid: order.uid, imgs: shots, createdMs: Date.now() }, false);
       await patch('orders', order.id, { status: 'placed', 'timeline.placed': Date.now(), paymentClaim: 'screenshot', claimMs: Date.now(), proofCount: shots.length });
       onDone(order.id);
     } catch (e) { console.warn(e); toast(t('Could not send. Check internet and try again.'), 'err'); }
     setBusy(false);
   };
-  const cancel = async () => { try { await patch('orders', order.id, { status: 'payment_failed' }); } catch { /* ignore */ } onClose(); };
+  const cancel = async () => { if (cancelFn) { cancelFn(); return; } try { await patch('orders', order.id, { status: 'payment_failed' }); } catch { /* ignore */ } onClose(); };
 
   return createPortal(
     <div className="pm-wrap" data-notr="">
       <div className="pm-top">
         <button className="icon-btn round" onClick={cancel} aria-label="Back"><Icon name="back" size={22} /></button>
-        <div><small data-notr="">{`${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{t('Pay {}', rupee(order.amount))}</h2></div>
+        <div><small data-notr="">{label || `${rest.name} · ${t('Order')} #${order.code}`}</small><h2>{t('Pay {}', rupee(order.amount))}</h2></div>
       </div>
       <div className="pm-body">
         <div className="pm-step">{t('Pay by UPI ID, mobile number or the QR below — then upload the payment screenshot or photo below.')}</div>
@@ -113,8 +114,8 @@ export default function PayManual({ order, rest, onDone, onClose }) {
             </div>
           )}
         </div>
-        <button className="btn pm-send block lg" disabled={busy || !shots.length} onClick={send}>{busy ? t('Sending…') : `${t('Send order')} ✓`}</button>
-        <button className="btn ghost block" onClick={cancel}>{t('Cancel order')}</button>
+        <button className="btn pm-send block lg" disabled={busy || !shots.length} onClick={send}>{busy ? t('Sending…') : `${sendLabel || t('Send order')} ✓`}</button>
+        <button className="btn ghost block" onClick={cancel}>{cancelFn ? t('Close') : t('Cancel order')}</button>
       </div>
     </div>,
     document.body,

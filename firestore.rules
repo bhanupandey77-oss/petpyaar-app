@@ -113,6 +113,12 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isAdmin() || ownsRest(resource.data.restaurantId));
       allow delete: if isAdmin() || ownsRest(resource.data.restaurantId);
     }
+    // restaurant's payment screenshots for a commission payment to FoodGaon
+    match /settproofs/{id} {
+      allow create: if ownsRest(request.resource.data.restaurantId);
+      allow read: if isAdmin() || ownsRest(resource.data.restaurantId);
+      allow delete: if isAdmin();
+    }
     match /riderLoc/{phone} {
       allow read: if signedIn();
       allow write: if phone == ph() || isAdmin();

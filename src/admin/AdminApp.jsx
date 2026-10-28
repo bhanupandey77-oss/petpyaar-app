@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useMenuPack } from '../lib/menuPack.js';
 import { ClearTestOrders } from '../components/OrderActions.jsx';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -373,6 +374,20 @@ function Settings() {
 }
 
 /* commission payments sent by restaurants */
+/* restaurant's payment screenshots for a commission payment (tap to enlarge) */
+function SettProofs({ id }) {
+  const [imgs, setImgs] = useState(null);
+  const [big, setBig] = useState(null);
+  useEffect(() => { let on = true; getOne('settproofs', id).then((d) => on && setImgs(d?.imgs || [])).catch(() => on && setImgs([])); return () => { on = false; }; }, [id]);
+  return (
+    <div className="row gap wrap" style={{ marginTop: 6 }}>
+      {imgs === null && <span className="tiny muted">…</span>}
+      {(imgs || []).map((s, i) => <button key={i} className="proof-th" onClick={() => setBig(s)}><img src={s} alt="" /></button>)}
+      {big && createPortal(<div className="proof-big" onClick={() => setBig(null)}><img src={big} alt="" /><span>✕</span></div>, document.body)}
+    </div>
+  );
+}
+
 function Settlements() {
   const toast = useToast();
   const list = useList('settlements', [], []);
@@ -393,7 +408,7 @@ function Settlements() {
       })}
       {sorted.map((x) => (
         <div key={x.id} className="sett-row">
-          <div className="grow"><b data-notr="">{x.restaurantName}</b><small className="muted">{fmtDateTime(x.createdMs)}{x.utr ? ` · UTR ${x.utr}` : ''}</small></div>
+          <div className="grow"><b data-notr="">{x.restaurantName}</b><small className="muted">{fmtDateTime(x.createdMs)}{x.utr ? ` · UTR ${x.utr}` : ''}{x.cycle ? ` · ${x.cycle}` : ''}</small>{x.proofCount > 0 && <SettProofs id={x.id} />}</div>
           <b>{rupee(x.amount)}</b>
           {x.status === 'claimed' ? (
             <span className="row gap"><button className="btn small green" onClick={() => setSt(x, 'confirmed')}>Got it</button><button className="btn small ghost danger-text" onClick={() => setSt(x, 'rejected')}>Not received</button></span>

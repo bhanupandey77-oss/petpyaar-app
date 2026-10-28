@@ -1,3 +1,5 @@
+import PayManual from '../customer/PayManual.jsx';
+import { hi } from '../i18n/index.js';
 import { useMenuPack } from '../lib/menuPack.js';
 import { HideOrderBtn, visibleFor } from '../components/OrderActions.jsx';
 import React, { useEffect, useRef, useState } from 'react';
@@ -6,7 +8,7 @@ import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange , isRealOrder } from '../lib/data.js';
 import { DocSheet, Statement } from '../components/Docs.jsx';
-import { patch, add, getOne } from '../lib/fb.js';
+import { patch, add, getOne, put, newId } from '../lib/fb.js';
 import { UpiEditor, UpiQr, UpiButton } from '../components/Pay.jsx';
 import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotify, askNotifyPermission, compressImage, todayKey, dayKey, mapsPin } from '../lib/utils.js';
 import { getPosition } from '../lib/native.js';
@@ -307,17 +309,21 @@ function Dues({ orders, rest }) {
         </div>
       ))}
       {!cycles.length && <p className="muted center small">No delivered orders yet</p>}
-      <Sheet open={!!payFor} onClose={() => setPayFor(null)} title="Pay FoodGaon">
-        {payFor && (!config.upiId && !config.upiQr ? <p className="muted">FoodGaon has not added its UPI yet. Please call the admin.</p> : (
-          <>
-            <p className="small">{`Week ${payFor.range.label}`}</p>
-            <UpiButton upiId={config.upiId} upiName={config.upiName || 'FoodGaon'} amount={payFor.bal} note={`FoodGaon dues ${payFor.range.label}`} refId={ref(payFor.key)} label="Open UPI app" />
-            <UpiQr upiId={config.upiId} upiName={config.upiName || 'FoodGaon'} upiQr={config.upiQr} amount={payFor.bal} note={`FoodGaon dues ${payFor.range.label}`} refId={ref(payFor.key)} size={200} />
-            <Field label="UPI reference / UTR no. (optional)"><input className="input" value={utr} onChange={(e) => setUtr(e.target.value.replace(/[^\w]/g, '').slice(0, 24))} data-notr="" /></Field>
-            <button className="btn green block lg" disabled={busy} onClick={record}><Icon name="check" size={18} /> {`I have paid ${rupee(payFor.bal)}`}</button>
-          </>
-        ))}
-      </Sheet>
+      {payFor && (!config.upiId && !config.upiQr && !config.upiMobile
+        ? <Sheet open onClose={() => setPayFor(null)} title="Pay FoodGaon"><p className="muted">FoodGaon has not added its UPI yet. Please call the admin.</p></Sheet>
+        : <PayManual
+            order={{ id: ref(payFor.key), amount: payFor.bal, code: payFor.range.label }}
+            rest={{ id: 'foodgaon', name: config.firmName || 'TechGaon AI Services', upiId: config.upiId, upiMobile: config.upiMobile, upiQr: config.upiQr, upiName: config.upiName || 'FoodGaon' }}
+            label={`FoodGaon · ${hi('Week')} ${payFor.range.label}`}
+            sendLabel={hi('Send payment')}
+            submit={async (shots) => {
+              const id = newId('settlements');
+              await put('settlements', id, { restaurantId: rest.id, restaurantName: rest.name, cycle: payFor.key, amount: payFor.bal, utr: '', status: 'claimed', proofCount: shots.length, createdMs: Date.now() }, false);
+              await put('settproofs', id, { restaurantId: rest.id, imgs: shots, createdMs: Date.now() }, false);
+              toast(t('Payment sent — FoodGaon will confirm'));
+            }}
+            cancelFn={() => setPayFor(null)}
+            onDone={() => setPayFor(null)} onClose={() => setPayFor(null)} />)}
       {view && <DocSheet open onClose={() => setView(null)} title="Weekly statement" fileName={`FoodGaon-${rest.id}-${view.key}.pdf`}><Statement rest={rest} cycle={view.key} orders={view.orders} setts={setts} config={config} /></DocSheet>}
     </div>
   );

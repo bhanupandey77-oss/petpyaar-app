@@ -134,7 +134,7 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
       <Field label="UPI ID">
         <input className="input" value={f.upiId} onChange={(e) => { setF({ ...f, upiId: e.target.value.replace(/\s/g, '') }); setParams(null); }} placeholder="shopname@okaxis" autoCapitalize="none" data-notr="" />
       </Field>
-      {shop && (
+      {(
         <Field label="UPI mobile number" hint="The number customers can pay to in any UPI app">
           <input className="input" inputMode="numeric" maxLength={10} value={f.upiMobile} onChange={(e) => setF({ ...f, upiMobile: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="98XXXXXXXX" />
         </Field>
