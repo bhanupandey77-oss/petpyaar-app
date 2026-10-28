@@ -137,8 +137,10 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     timeline: status === 'placed' ? { placed: now } : { created: now },
   };
   await put('orders', id, order, false);
+  lastOrder.code = order.code;
   return id;
 }
+export const lastOrder = { code: '' };
 export function setStatus(order, status, extra = {}) {
   // a rejected / cancelled order is taken off the delivery boy's list at once
   const off = ['rejected', 'cancelled'].includes(status) && order.status !== 'picked' ? { riderPhone: '', riderName: '' } : {};

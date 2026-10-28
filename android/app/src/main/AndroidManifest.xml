@@ -41,6 +41,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
     <!-- Android 11+: फ़ोन में मौजूद UPI ऐप देखने के लिए -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />

@@ -25,7 +25,7 @@ import { LS } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 
 export const UPI_RE = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/;
-export const hasUpi = (x) => !!(x && (x.upiId || x.upiQr));
+export const hasUpi = (x) => !!(x && (x.upiId || x.upiQr || x.upiMobile));
 
 /* UPI apps installed on this phone (with their own icons from the phone) */
 let APPS = null;
@@ -84,70 +84,63 @@ export function UpiButton({ upiId, upiName, amount, note, refId, label = 'Pay by
   return <button type="button" className={className} onClick={go}><Icon name="upi" size={20} /> {t(label)}{amount > 0 ? ` · ${rupee(amount)}` : ''}</button>;
 }
 
-/** Edit UPI ID + name + QR photo (used by restaurant shop settings and admin settings) */
-export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hint, noQr }) {
+/** Edit UPI ID + mobile + name + QR photo (restaurant shop settings use `noQr` = shop mode; admin uses the plain one) */
+export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hint, noQr: shop }) {
   const toast = useToast();
-  const [f, setF] = useState({ upiId: value.upiId || '', upiName: value.upiName || '', upiQr: value.upiQr || '' });
+  const init = () => ({ upiId: value.upiId || '', upiName: value.upiName || '', upiQr: value.upiQr || '', upiMobile: value.upiMobile || '' });
+  const [f, setF] = useState(init);
   const [busy, setBusy] = useState(false);
   const [params, setParams] = useState(value.upiParams || null);
-  useEffect(() => setF({ upiId: value.upiId || '', upiName: value.upiName || '', upiQr: value.upiQr || '' }), [value.upiId, value.upiName, value.upiQr]);
+  useEffect(() => setF(init()), [value.upiId, value.upiName, value.upiQr, value.upiMobile]); // eslint-disable-line
   useEffect(() => setParams(value.upiParams || null), [value.upiParams]);
-  const scan = async (e) => {
+  // QR photo: keep the photo (customers see it) and also read the UPI ID / merchant code from it
+  const pick = async (e) => {
     const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
     try {
-      const txt = await readQr(file);
-      const u = parseUpiQr(txt);
-      if (!u) { toast(t('No UPI QR found in this photo. Take a clear, straight photo of the QR.'), 'err'); return; }
-      setF((x) => ({ ...x, upiId: u.upiId, upiName: u.upiName || x.upiName })); setParams(u.extra);
-      toast(Object.keys(u.extra).length ? t('Shop QR read — merchant details saved with your UPI ID') : t('QR read. It looks like a personal UPI QR (no merchant code).'));
-    } catch (er) { console.warn(er); toast(t('Could not read the QR'), 'err'); }
-  };
-  const pick = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    try { setF((x) => ({ ...x, upiQr: '' })); const img = await compressImage(file, 700, 240000); setF((x) => ({ ...x, upiQr: img })); } catch (er) { toast(t(er.message), 'err'); }
+      const img = await compressImage(file, 900, 260000);
+      setF((x) => ({ ...x, upiQr: img }));
+      try {
+        const u = parseUpiQr(await readQr(file));
+        if (u) { setF((x) => ({ ...x, upiQr: img, upiId: u.upiId, upiName: u.upiName || x.upiName })); setParams(u.extra); toast(t('QR read — UPI ID filled in. Tap Save.')); }
+        else toast(t('QR photo added. Type your UPI ID below too.'));
+      } catch { /* photo still saved */ }
+    } catch (er) { toast(t(er.message || 'Could not read the photo'), 'err'); }
   };
   const save = async () => {
-    const id = f.upiId.trim();
+    const id = f.upiId.trim(); const mob = f.upiMobile.replace(/\D/g, '').slice(-10);
     if (id && !UPI_RE.test(id)) { toast(t('UPI ID looks wrong. Example: shopname@okaxis'), 'err'); return; }
+    if (f.upiMobile && mob.length !== 10) { toast(t('Enter a valid 10-digit mobile number'), 'err'); return; }
+    if (shop && !id && !f.upiQr && !mob) { toast(t('Add your UPI ID, mobile number or QR photo'), 'err'); return; }
     setBusy(true);
-    if (noQr && !id) { toast(t('Enter your UPI ID'), 'err'); setBusy(false); return; }
-    try { await onSave({ upiId: id, upiName: f.upiName.trim(), upiQr: noQr ? '' : f.upiQr, upiParams: params || null }); toast(t('Saved')); } catch (er) { console.warn(er); toast(t('Could not save'), 'err'); }
+    try { await onSave({ upiId: id, upiName: f.upiName.trim(), upiQr: f.upiQr, upiMobile: mob, upiParams: params || null }); toast(t('Saved')); } catch (er) { console.warn(er); toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
   return (
     <div className="card upi-edit">
       <h4><Icon name="upi" size={18} /> {title}</h4>
       {hint && <p className="tiny muted">{hint}</p>}
-      {noQr && (
-        <div className="qr-scan">
-          <p className="small"><b>{t('Easiest: scan your shop’s UPI QR')}</b></p>
-          <p className="tiny muted">{t('FoodGaon reads the UPI ID and merchant code from your QR stand, so customers’ UPI apps accept the payment.')}</p>
-          <div className="row gap">
-            <label className="btn small primary"><Icon name="camera" size={16} /> {t('Scan QR')}<input type="file" accept="image/*" capture="environment" hidden onChange={scan} /></label>
-            <label className="btn small ghost"><Icon name="image" size={16} /> {t('QR from gallery')}<input type="file" accept="image/*" hidden onChange={scan} /></label>
-          </div>
-          {params && Object.keys(params).length > 0 && <p className="tiny t-green"><Icon name="check" size={12} /> {`${t('Merchant code')}: ${params.mc || '—'}`}</p>}
-        </div>
-      )}
-      <Field label="Merchant UPI ID" hint="Business / merchant UPI works best (e.g. from PhonePe Business, Paytm for Business, GPay for Business)">
-        <input className="input" value={f.upiId} onChange={(e) => { setF({ ...f, upiId: e.target.value.replace(/\s/g, '') }); setParams(null); }} placeholder="shopname@okaxis" autoCapitalize="none" data-notr="" />
-      </Field>
-      {noQr && <p className="upi-warn"><b>{t('Use a BUSINESS / merchant UPI ID')}</b><br />{t('UPI apps (Paytm, PhonePe, GPay) block app payments to a personal UPI ID like 98XXXXXXXX@upi. Get a free business UPI from Paytm for Business, PhonePe Business or BharatPe and put that ID here.')}</p>}
-      <Field label="Name on UPI account"><input className="input" value={f.upiName} onChange={(e) => setF({ ...f, upiName: e.target.value })} data-notr="" /></Field>
-      {!noQr && <div className="qr-edit">
+      <p className="field-label">{t('Shop UPI QR')}</p>
+      <div className="qr-edit">
         {f.upiQr ? <img src={f.upiQr} alt="QR" /> : <span className="qr-ph"><Icon name="image" size={28} /><small>No QR photo</small></span>}
         <div className="grow">
-          <p className="small"><b>QR code photo</b></p>
-          <p className="tiny muted">Take a clear photo or screenshot of your shop's UPI QR (barcode) stand.</p>
+          <p className="tiny muted">{t('Take a clear, straight photo of your UPI QR stand — customers will see and scan it.')}</p>
           <div className="row gap wrap">
-            <label className="btn small ghost"><Icon name="camera" size={16} /> Camera<input type="file" accept="image/*" capture="environment" hidden onChange={pick} /></label>
-            <label className="btn small ghost"><Icon name="image" size={16} /> Gallery<input type="file" accept="image/*" hidden onChange={pick} /></label>
+            <label className="btn small green"><Icon name="camera" size={16} /> {t('QR photo')}<input type="file" accept="image/*" capture="environment" hidden onChange={pick} /></label>
+            <label className="btn small ghost"><Icon name="image" size={16} /> {t('From gallery')}<input type="file" accept="image/*" hidden onChange={pick} /></label>
             {f.upiQr && <button type="button" className="btn small ghost danger-text" onClick={() => setF({ ...f, upiQr: '' })}>Remove</button>}
           </div>
         </div>
-      </div>}
-      {f.upiId && UPI_RE.test(f.upiId) && <p className="tiny t-green"><Icon name="check" size={12} /> Customers' UPI apps will open with this ID</p>}
-      <button className="btn primary block" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save UPI details'}</button>
+      </div>
+      <Field label="UPI ID">
+        <input className="input" value={f.upiId} onChange={(e) => { setF({ ...f, upiId: e.target.value.replace(/\s/g, '') }); setParams(null); }} placeholder="shopname@okaxis" autoCapitalize="none" data-notr="" />
+      </Field>
+      {shop && (
+        <Field label="UPI mobile number" hint="The number customers can pay to in any UPI app">
+          <input className="input" inputMode="numeric" maxLength={10} value={f.upiMobile} onChange={(e) => setF({ ...f, upiMobile: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="98XXXXXXXX" />
+        </Field>
+      )}
+      <Field label="Name on UPI account"><input className="input" value={f.upiName} onChange={(e) => setF({ ...f, upiName: e.target.value })} data-notr="" /></Field>
+      <button className="btn green block" disabled={busy} onClick={save}>{busy ? 'Saving…' : t('Save')}</button>
     </div>
   );
 }

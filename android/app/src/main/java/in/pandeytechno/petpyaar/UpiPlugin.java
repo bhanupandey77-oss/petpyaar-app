@@ -107,4 +107,37 @@ public class UpiPlugin extends Plugin {
         ret.put("raw", raw == null ? "" : raw);
         call.resolve(ret);
     }
+
+    /** Save a PNG (base64) into the phone's gallery: Pictures/FoodGaon */
+    @PluginMethod
+    public void saveImage(PluginCall call) {
+        String b64 = call.getString("data");
+        String name = call.getString("name", "FoodGaon-QR.png");
+        if (b64 == null) { call.reject("no data"); return; }
+        try {
+            if (b64.contains(",")) b64 = b64.substring(b64.indexOf(',') + 1);
+            byte[] bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            android.content.ContentResolver cr = getContext().getContentResolver();
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, name);
+            v.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                v.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/FoodGaon");
+                v.put(android.provider.MediaStore.Images.Media.IS_PENDING, 1);
+            }
+            android.net.Uri uri = cr.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+            if (uri == null) { call.reject("could not save"); return; }
+            try (java.io.OutputStream out = cr.openOutputStream(uri)) { out.write(bytes); }
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                android.content.ContentValues done = new android.content.ContentValues();
+                done.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0);
+                cr.update(uri, done, null, null);
+            }
+            JSObject ret = new JSObject();
+            ret.put("uri", uri.toString());
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("could not save", e);
+        }
+    }
 }

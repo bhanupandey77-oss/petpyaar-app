@@ -5,8 +5,8 @@ import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '.
 import { LS, priceText, lineText } from '../lib/utils.js';
 import { Icon, VegMark, Stepper, Empty, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
-import { useCart, cartTotals, cartStore, useRestaurants, placeOrder, billFor } from '../lib/data.js';
-import PayWait from './PayWait.jsx';
+import { useCart, cartTotals, cartStore, useRestaurants, placeOrder, billFor, lastOrder } from '../lib/data.js';
+import PayManual from './PayManual.jsx';
 import NoteBox from './NoteBox.jsx';
 import { rupee, upiLink, km } from '../lib/utils.js';
 import { upiPay } from '../lib/native.js';
@@ -23,7 +23,7 @@ export default function CartPage({ nav, onPlaced }) {
   useSyncAddresses();
   const { list: addrs, sel } = useAddresses();
   const addr = addrs.find((a) => a.id === sel) || addrs[0];
-  const upiNow = !!rest?.upiId && config.upiNowEnabled !== false;
+  const upiNow = hasUpi(rest) && config.upiNowEnabled !== false;
   const upiDel = hasUpi(rest) && config.upiEnabled !== false;
   const cod = config.codEnabled !== false;
   const [pay, setPay] = useState(() => LS.get('pp_pay', 'upi_now'));
@@ -71,14 +71,14 @@ export default function CartPage({ nav, onPlaced }) {
     if (far) { toast(t('Sorry, this restaurant delivers only within {} km').replace('{}', radius), 'err'); return; }
     setBusy(true);
     try {
-      const payNow = pay === 'upi_now' && rest.upiId;
+      const payNow = pay === 'upi_now' && hasUpi(rest);
       const id = await placeOrder({
         user, customerName: user.displayName || addr.name, rest, config, cartData: cart, note, payment: pay,
         offer: discount ? applied : null, discount, status: payNow ? 'awaiting_payment' : 'placed',
         address: { label: addr.label, name: addr.name, phone: addr.phone, line: addrLine(addr), lat: addr.lat || null, lng: addr.lng || null },
       });
       LS.set('pp_pay', pay);
-      if (payNow) { setPaying({ id, amount: bill.total }); setBusy(false); return; } // order goes to the restaurant only after payment
+      if (payNow) { setPaying({ id, amount: bill.total, code: lastOrder.code, uid: user.uid }); setBusy(false); return; } // order goes to the restaurant only after payment
       cartStore.clear(); LS.set('pp_coupon', '');
       onPlaced(id);
     } catch (e) { console.warn(e); toast(t('Could not place the order. Check internet and try again.'), 'err'); }
@@ -88,7 +88,7 @@ export default function CartPage({ nav, onPlaced }) {
   return (
     <div className="page cart-page">
       <TopBar onBack={nav.back} title={rest?.name || 'Cart'} />
-      {paying && <PayWait order={paying} rest={rest} onDone={(id) => { setPaying(null); cartStore.clear(); LS.set('pp_coupon', ''); onPlaced(id); }} onClose={() => setPaying(null)} />}
+      {paying && <PayManual order={paying} rest={rest} onDone={(id) => { setPaying(null); cartStore.clear(); LS.set('pp_coupon', ''); onPlaced(id); }} onClose={() => setPaying(null)} />}
       <div className="pad-x">
         <div className="card">
           {list.map((x) => (

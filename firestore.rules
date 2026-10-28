@@ -87,7 +87,7 @@ service cloud.firestore {
                     || (isRider() && (resource.data.riderPhone == ph()
                          || (resource.data.riderPhone == '' && resource.data.restaurantId == riderOf() && request.resource.data.riderPhone == ph())))
                     || (signedIn() && resource.data.customerUid == request.auth.uid
-                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs', 'riderRating', 'reviewTags', 'reviewMs', 'payment', 'upiStatus', 'upiTxn', 'upiRef', 'hide'])
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'timeline', 'rating', 'review', 'cancelReason', 'paymentClaim', 'claimMs', 'riderRating', 'reviewTags', 'reviewMs', 'payment', 'upiStatus', 'upiTxn', 'upiRef', 'hide', 'proofCount'])
                          && (request.resource.data.status == resource.data.status
                              || (resource.data.status == 'placed' && request.resource.data.status == 'cancelled')
                              || (resource.data.status == 'awaiting_payment' && request.resource.data.status in ['placed', 'payment_failed'])));
@@ -104,6 +104,13 @@ service cloud.firestore {
       allow create, update: if signedIn() && request.resource.data.customerUid == request.auth.uid
                     && get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
                     && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+      allow delete: if isAdmin() || ownsRest(resource.data.restaurantId);
+    }
+    // customer's UPI payment screenshots for an order (seen by that restaurant and the admin)
+    match /payproofs/{orderId} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid
+                    && get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isAdmin() || ownsRest(resource.data.restaurantId));
       allow delete: if isAdmin() || ownsRest(resource.data.restaurantId);
     }
     match /riderLoc/{phone} {

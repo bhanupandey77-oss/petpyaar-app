@@ -1,11 +1,12 @@
 import { useMenuPack } from '../lib/menuPack.js';
 import { HideOrderBtn, visibleFor } from '../components/OrderActions.jsx';
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, BottomNav, Toggle, Empty, Sheet, Field, useToast, StatusChip, Img, VegMark, Logo, WaBtn } from '../ui.jsx';
 import { useApp, RoleSwitchButton } from '../App.jsx';
 import { useRestaurants, useList, setStatus, ACTIVE, cycleOf, cycleRange , isRealOrder } from '../lib/data.js';
 import { DocSheet, Statement } from '../components/Docs.jsx';
-import { patch, add } from '../lib/fb.js';
+import { patch, add, getOne } from '../lib/fb.js';
 import { UpiEditor, UpiQr, UpiButton } from '../components/Pay.jsx';
 import { rupee, fmtTime, fmtDateTime, tel, plain, ding, unlockAudio, systemNotify, askNotifyPermission, compressImage, todayKey, dayKey, mapsPin } from '../lib/utils.js';
 import { getPosition } from '../lib/native.js';
@@ -118,6 +119,23 @@ export function RestOrders({ orders, showRest }) {
   );
 }
 
+/* customer's UPI payment screenshots for this order (tap to enlarge) */
+function PayProofs({ o }) {
+  const [imgs, setImgs] = useState(null);
+  const [big, setBig] = useState(null);
+  useEffect(() => { let on = true; getOne('payproofs', o.id).then((d) => on && setImgs(d?.imgs || [])).catch(() => on && setImgs([])); return () => { on = false; }; }, [o.id]);
+  return (
+    <div className="proofs">
+      <p className="tiny"><b>{t('Customer’s payment screenshots (tap to enlarge)')}</b></p>
+      <div className="row gap wrap">
+        {imgs === null && <span className="tiny muted">…</span>}
+        {(imgs || []).map((s, i) => <button key={i} className="proof-th" onClick={() => setBig(s)}><img src={s} alt="" /></button>)}
+      </div>
+      {big && createPortal(<div className="proof-big" onClick={() => setBig(null)}><img src={big} alt="" /><span>✕</span></div>, document.body)}
+    </div>
+  );
+}
+
 function PastOrders({ orders }) {
   const [n, setN] = useState(15);
   if (!orders.length) return null;
@@ -148,7 +166,7 @@ export function OrderCard({ o, showRest, admin }) {
   const [custom, setCustom] = useState('');
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); } setBusy(false); };
   // accepting sends the order straight to the restaurant's delivery boy (auto-assigned when there is only one)
-  const accept = (mins) => run(() => setStatus(o, 'preparing', { prepMins: mins, 'timeline.accepted': Date.now(),
+  const accept = (mins) => run(() => setStatus(o, 'preparing', { prepMins: mins, 'timeline.accepted': Date.now(), ...(o.proofCount ? { paid: true, paidMs: Date.now() } : {}),
     ...(riders.length === 1 && !o.riderPhone ? { riderPhone: riders[0].phone, riderName: riders[0].name } : {}) }));
   const assign = (phone) => { const r = riders.find((x) => x.phone === phone); return run(() => patch('orders', o.id, { riderPhone: phone || '', riderName: r?.name || '' })); };
   const age = Math.floor((Date.now() - o.createdMs) / 60000);
@@ -177,10 +195,12 @@ export function OrderCard({ o, showRest, admin }) {
       )}
       {admin && <div className="tiny muted" data-notr="">{o.address?.line}</div>}
 
+      {o.proofCount > 0 && <PayProofs o={o} />}
+      {o.status === 'placed' && o.proofCount > 0 && <div className="proof-note">{t('Check in your bank / UPI app that the money has come, then accept.')}</div>}
       {o.status === 'placed' && !pickTime && (
         <div className="acc-row">
           <button className="btn reject-btn" disabled={busy} onClick={() => setReject(true)}><Icon name="x" size={18} /> Reject</button>
-          <button className="btn accept-btn" disabled={busy} onClick={() => setPickTime(true)}><Icon name="check" size={18} /> Accept</button>
+          <button className="btn accept-btn" disabled={busy} onClick={() => setPickTime(true)}><Icon name="check" size={18} /> {o.proofCount > 0 ? t('Checked — Accept') : 'Accept'}</button>
         </div>
       )}
       {o.status === 'placed' && pickTime && (

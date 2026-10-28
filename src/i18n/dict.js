@@ -1018,3 +1018,19 @@ DICT.push(
   ['No UPI QR found in this photo. Take a clear, straight photo of the QR.', 'इस फ़ोटो में UPI QR नहीं मिला। QR की साफ़, सीधी फ़ोटो लें।', 'ई फोटो मा UPI QR नाहीं मिला। QR क साफ, सीधी फोटो लेव।'],
   ['Could not read the QR', 'QR नहीं पढ़ पाए', 'QR नाहीं पढ़ पाए'],
 );
+DICT.push(
+  ['Shop UPI QR', 'दुकान का UPI QR', 'दुकान क UPI QR'], ['Take a clear, straight photo of your UPI QR stand — customers will see and scan it.', 'अपने UPI QR स्टैंड की साफ़, सीधी फ़ोटो लें — ग्राहक इसे देखकर स्कैन करेंगे।', 'आपन UPI QR स्टैंड क साफ, सीधी फोटो लेव — ग्राहक एका देख के स्कैन करिहैं।'],
+  ['QR photo', 'QR की फ़ोटो', 'QR क फोटो'], ['From gallery', 'गैलरी से', 'गैलरी से'], ['UPI mobile number', 'UPI मोबाइल नंबर', 'UPI मोबाइल नंबर'],
+  ['The number customers can pay to in any UPI app', 'वह नंबर जिस पर ग्राहक किसी भी UPI ऐप से भुगतान कर सकें', 'ऊ नंबर जेहपे ग्राहक कउनो UPI ऐप से भुगतान कइ सकें'],
+  ['QR read — UPI ID filled in. Tap Save.', 'QR पढ़ लिया — UPI ID भर दी। सेव करें दबाएँ।', 'QR पढ़ लिहा — UPI ID भर दिहा। सेव दबावा।'], ['QR photo added. Type your UPI ID below too.', 'QR फ़ोटो जुड़ गई। नीचे UPI ID भी लिखें।', 'QR फोटो जुड़ गई। नीचे UPI ID भी लिखा।'],
+  ['Add your UPI ID, mobile number or QR photo', 'UPI ID, मोबाइल नंबर या QR फ़ोटो जोड़ें', 'UPI ID, मोबाइल नंबर या QR फोटो जोड़ा'],
+  ['Pay by UPI ID, mobile number or the QR below — then upload the payment screenshot or photo below.', 'UPI ID से, मोबाइल नंबर से या नीचे QR से भुगतान करें — फिर नीचे भुगतान का स्क्रीनशॉट या फ़ोटो अपलोड करें।', 'UPI ID से, मोबाइल नंबर से या नीचे QR से भुगतान करा — फिर नीचे भुगतान क स्क्रीनशॉट या फोटो अपलोड करा।'],
+  ['pay', 'भुगतान करें', 'भुगतान करा'], ['Order', 'ऑर्डर', 'ऑर्डर'], ['Copy', 'कॉपी', 'कॉपी'], ['or', 'या', 'या'], ['or scan the QR', 'या QR स्कैन करें', 'या QR स्कैन करा'],
+  ['Mobile number (UPI)', 'मोबाइल नंबर (UPI)', 'मोबाइल नंबर (UPI)'], ['Number', 'नंबर', 'नंबर'], ['{} copied', '{} कॉपी हो गया', '{} कॉपी होइ गवा'],
+  ['Download QR', 'QR डाउनलोड करें', 'QR डाउनलोड करा'], ['QR saved in your gallery (Pictures/FoodGaon)', 'QR आपकी गैलरी में सेव हो गया (Pictures/FoodGaon)', 'QR आपकी गैलरी मा सेव होइ गवा'],
+  ['Upload payment screenshot / photo', 'भुगतान का स्क्रीनशॉट / फ़ोटो अपलोड करें', 'भुगतान क स्क्रीनशॉट / फोटो अपलोड करा'], ['Paid in parts? Upload all the screenshots.', 'हिस्सों में भुगतान किया है तो सभी स्क्रीनशॉट डालें', 'हिस्सा मा भुगतान किहा है तो सब स्क्रीनशॉट डारा'],
+  ['Camera', 'कैमरा', 'कैमरा'], ['Gallery', 'गैलरी', 'गैलरी'], ['Send order', 'ऑर्डर भेजें', 'ऑर्डर भेजा'], ['Sending…', 'भेज रहे हैं…', 'भेजत अही…'],
+  ['Upload the payment screenshot first', 'पहले भुगतान का स्क्रीनशॉट अपलोड करें', 'पहिले भुगतान क स्क्रीनशॉट अपलोड करा'], ['Could not send. Check internet and try again.', 'नहीं भेज पाए। इंटरनेट जाँचकर फिर कोशिश करें।', 'नाहीं भेज पाए। इंटरनेट जाँच के फिर कोसिस करा।'],
+  ['Check in your bank / UPI app that the money has come, then accept.', 'अपने बैंक/UPI ऐप में पैसा आया है, देखकर ही Accept करें।', 'आपन बैंक/UPI ऐप मा पइसा आवा है, देख के ही Accept करा।'],
+  ['Checked — Accept', 'जाँच लिया — Accept', 'जाँच लिहा — Accept'], ['Customer’s payment screenshots (tap to enlarge)', 'ग्राहक के भुगतान के स्क्रीनशॉट (टैप करके बड़ा देखें)', 'ग्राहक क भुगतान स्क्रीनशॉट (टैप कइके बड़ा देखा)'],
+);

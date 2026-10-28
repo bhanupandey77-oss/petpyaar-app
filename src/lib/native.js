@@ -83,3 +83,12 @@ export async function upiPay(url, pkg) {
     return { ok: false, status: 'NOAPP' };
   }
 }
+
+/** save an image (data URL) to the phone gallery (Pictures/FoodGaon); on the web it downloads the file */
+export async function saveImage(dataUrl, name = 'FoodGaon-QR.png') {
+  if (isNative) {
+    try { await UpiPay.saveImage({ data: dataUrl, name }); return true; } catch (e) { console.warn('saveImage', e); return false; }
+  }
+  const a = document.createElement('a'); a.href = dataUrl; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  return true;
+}
