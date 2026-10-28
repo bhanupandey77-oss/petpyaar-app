@@ -52,19 +52,20 @@ export async function pdfPages(file, maxPages = 8) {
   }
   return out;
 }
-/* Digital PDF: exact text lines (no OCR needed) */
-export async function pdfText(file) {
+/* Digital PDF: exact text lines per page (no OCR needed) */
+export async function pdfPageTexts(file, maxPages = 20) {
   const pdfjs = await pdfLib();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const lines = [];
-  for (let p = 1; p <= Math.min(doc.numPages, 20); p++) {
+  const pages = [];
+  for (let p = 1; p <= Math.min(doc.numPages, maxPages); p++) {
     const tc = await (await doc.getPage(p)).getTextContent();
     const rows = {};
-    tc.items.forEach((it) => { const y = Math.round(it.transform[5] / 4); (rows[y] = rows[y] || []).push(it); });
-    Object.keys(rows).sort((a, b) => b - a).forEach((y) => lines.push(rows[y].sort((a, b) => a.transform[4] - b.transform[4]).map((i) => i.str).join(' ')));
+    tc.items.forEach((it) => { if (!it.str?.trim()) return; const y = Math.round(it.transform[5] / 4); (rows[y] = rows[y] || []).push(it); });
+    pages.push(Object.keys(rows).sort((x, y) => y - x).map((y) => rows[y].sort((m, n) => m.transform[4] - n.transform[4]).map((i) => i.str.trim()).join('   ')).join('\n'));
   }
-  return lines.join('\n');
+  return pages;
 }
+export async function pdfText(file) { return (await pdfPageTexts(file)).join('\n'); }
 
 /* Split the input into small "units" (one photo or one PDF page each) so even a 200-dish menu
    is read completely — one big request would hit the AI's answer-length limit. */
@@ -73,9 +74,10 @@ async function unitsOf(files, onStatus) {
   for (const f of files) {
     if (isPdf(f)) {
       onStatus?.('Preparing PDF pages…');
-      let pages = [];
+      let pages = []; let texts = [];
       try { pages = await withTimeout(pdfPages(f, 20), 60000); } catch (e) { console.warn('pdf render', e); pages = []; }
-      if (pages.length) pages.forEach((u, k) => units.push({ label: `${f.name ? 'PDF ' : ''}page ${k + 1}`, part: { inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } } }));
+      try { texts = await withTimeout(pdfPageTexts(f, 20), 30000); } catch { texts = []; }
+      if (pages.length) pages.forEach((u, k) => units.push({ label: `page ${k + 1}`, hint: (texts[k] || '').slice(0, 12000), part: { inlineData: { mimeType: 'image/jpeg', data: u.split(',')[1] } } }));
       else units.push({ label: 'PDF', part: { inlineData: { mimeType: 'application/pdf', data: await toB64(f) } } });
     } else {
       const u = await compressImage(f, 2600, 2600000);
@@ -144,7 +146,8 @@ async function readUnit(ai, prompt, unit) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const model = getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0, maxOutputTokens: 65536 } }, { timeout: 170000 });
-        const r = await withTimeout(model.generateContent([prompt, unit.part]), 180000);
+        const hint = unit.hint && unit.hint.replace(/\s/g, '').length > 40 ? `\n\nTEXT LAYER of this same page (extracted from the PDF, reading order may be mixed between columns). Use it to be sure you list EVERY dish and read every price correctly — every dish line below must appear in your answer (one entry per available size):\n${unit.hint}` : '';
+        const r = await withTimeout(model.generateContent([prompt + hint, unit.part]), 180000);
         const txt = r.response.text().trim().replace(/^```(json)?/i, '').replace(/```$/, '');
         const json = JSON.parse(txt);
         return { dishes: (json.dishes || []).filter((d) => d && d.name && String(d.name).trim().length > 1).map(clean), engine: name };
@@ -160,6 +163,23 @@ async function readUnit(ai, prompt, unit) {
   throw errs[errs.length - 1] || new Error('AI error');
 }
 
+/* rough number of priced entries printed on a page (from the PDF text layer) */
+function expectedCount(hint) {
+  if (!hint) return 0;
+  return (hint.match(/(?:^|\s)(?:\d{2,4}(?:\/[-A-Za-z0-9]*)?|MRP|Rs\.?\s*\d{2,4}\/?-?)(?=\s|$)/gim) || []).length;
+}
+async function readUnitChecked(ai, prompt, unit) {
+  const first = await readUnit(ai, prompt, unit);
+  const want = expectedCount(unit.hint);
+  if (want >= 8 && first.dishes.length < want * 0.85) {
+    try {
+      const again = await readUnit(ai, `${prompt}\n\nIMPORTANT: a previous reading of this page found only ${first.dishes.length} entries, but the page has about ${want} prices. Read the WHOLE page again, every section and every column, and list ALL dishes.`, unit);
+      if (again.dishes.length > first.dishes.length) return again;
+    } catch (e) { console.warn('recheck', e); }
+  }
+  return first;
+}
+
 export async function readMenuWithAI(files, library, onStatus) {
   const list = Array.isArray(files) ? files : [files];
   const units = await unitsOf(list, onStatus);
@@ -170,7 +190,7 @@ export async function readMenuWithAI(files, library, onStatus) {
   const worker = async () => {
     while (next < units.length) {
       const k = next++;
-      try { const r = await readUnit(ai, prompt, units[k]); results[k] = r.dishes; engine = engine || r.engine; found += r.dishes.length; }
+      try { const r = await readUnitChecked(ai, prompt, units[k]); results[k] = r.dishes; engine = engine || r.engine; found += r.dishes.length; }
       catch (e) { errs.push({ label: units[k].label, e }); if (/\[40[13]|API key|App Check/i.test(String(e?.message))) { next = units.length; } }
       doneN++;
       onStatus?.(units.length > 1 ? `Page ${doneN}/${units.length} read — ${found} dishes so far` : `${found} dishes found`, doneN / units.length);
