@@ -1004,3 +1004,8 @@ DICT.push(
   ['Old test orders cleared — ready for real testing', 'पुराने टेस्ट ऑर्डर मिट गए — अब असली टेस्टिंग के लिए तैयार', 'पुरान टेस्ट ऑर्डर मेट गए — अब असली टेस्टिंग बरे तैयार'],
   ['Payment is still pending in your UPI app. Order is not placed yet — check your UPI app, then try again or choose pay on delivery.', 'भुगतान अभी UPI ऐप में बाकी है। ऑर्डर अभी नहीं बना — UPI ऐप देखें, फिर दोबारा भुगतान करें या डिलीवरी पर भुगतान चुनें।', 'भुगतान अबहीं UPI ऐप मा बाकी बा। ऑर्डर अबहीं नाहीं बना — UPI ऐप देखा, फिर दुबारा भुगतान करा या डिलीवरी पे भुगतान चुना।'],
 );
+DICT.push(
+  ['Pay now by UPI', 'अभी UPI से भुगतान', 'अबहीं UPI से भुगतान'], ['Pay on delivery by UPI', 'डिलीवरी पर UPI से भुगतान', 'डिलीवरी पे UPI से भुगतान'],
+  ['Use a BUSINESS / merchant UPI ID', 'बिज़नेस / मर्चेंट UPI ID ही डालें', 'बिजनेस / मर्चेंट UPI ID ही डारा'],
+  ['UPI apps (Paytm, PhonePe, GPay) block app payments to a personal UPI ID like 98XXXXXXXX@upi. Get a free business UPI from Paytm for Business, PhonePe Business or BharatPe and put that ID here.', 'UPI ऐप (Paytm, PhonePe, GPay) निजी UPI ID (जैसे 98XXXXXXXX@upi) पर ऐप से भुगतान रोक देते हैं। Paytm for Business, PhonePe Business या BharatPe से मुफ़्त बिज़नेस UPI लें और वही ID यहाँ डालें।', 'UPI ऐप निजी UPI ID पे ऐप से भुगतान रोक देत हैं। Paytm for Business, PhonePe Business या BharatPe से मुफ्त बिजनेस UPI लेव अउर वही ID हियाँ डारा।'],
+);

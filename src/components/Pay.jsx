@@ -91,6 +91,7 @@ export function UpiEditor({ value, onSave, title = 'UPI for receiving money', hi
       <Field label="Merchant UPI ID" hint="Business / merchant UPI works best (e.g. from PhonePe Business, Paytm for Business, GPay for Business)">
         <input className="input" value={f.upiId} onChange={(e) => setF({ ...f, upiId: e.target.value.replace(/\s/g, '') })} placeholder="shopname@okaxis" autoCapitalize="none" data-notr="" />
       </Field>
+      {noQr && <p className="upi-warn"><b>{t('Use a BUSINESS / merchant UPI ID')}</b><br />{t('UPI apps (Paytm, PhonePe, GPay) block app payments to a personal UPI ID like 98XXXXXXXX@upi. Get a free business UPI from Paytm for Business, PhonePe Business or BharatPe and put that ID here.')}</p>}
       <Field label="Name on UPI account"><input className="input" value={f.upiName} onChange={(e) => setF({ ...f, upiName: e.target.value })} data-notr="" /></Field>
       {!noQr && <div className="qr-edit">
         {f.upiQr ? <img src={f.upiQr} alt="QR" /> : <span className="qr-ph"><Icon name="image" size={28} /><small>No QR photo</small></span>}

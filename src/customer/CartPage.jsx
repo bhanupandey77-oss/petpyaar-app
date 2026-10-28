@@ -151,11 +151,9 @@ export default function CartPage({ nav, onPlaced }) {
 
         <div className="card">
           <h4>Payment</h4>
-          <PayOpt id="upi_now" cur={pay} set={setPay} art="upi" title="Pay now — any UPI app" sub="Your UPI app opens right away · money goes straight to the restaurant" tag="Fastest" off={!upiNow} />
-          <PayOpt id="upi_rider" cur={pay} set={setPay} art="upi" title="Pay on delivery — any UPI app" sub="When food arrives, tap Pay — your UPI app opens (or scan the QR)" off={!upiDel} />
-          <PayOpt id="cod" cur={pay} set={setPay} art="cash" title="Cash on delivery" sub="Pay cash to the delivery partner" off={!cod} />
-          {!upiNow && !upiDel && <p className="tiny muted">This restaurant has not added its UPI yet — UPI options will open as soon as it does. Cash on delivery works now.</p>}
-          <p className="tiny muted pay-trust"><Icon name="shield" size={13} /> Your payment goes straight to the restaurant's own account. FoodGaon never holds your money.</p>
+          <PayOpt id="upi_now" cur={pay} set={setPay} art="now" title="Pay now by UPI" off={!upiNow} />
+          <PayOpt id="upi_rider" cur={pay} set={setPay} art="later" title="Pay on delivery by UPI" off={!upiDel} />
+          <PayOpt id="cod" cur={pay} set={setPay} art="cash" title="Cash on delivery" off={!cod} />
         </div>
         <p className="tiny muted center">Restaurant can take 1-2 minutes to accept. You can cancel until it is accepted.</p>
       </div>
@@ -199,22 +197,36 @@ export default function CartPage({ nav, onPlaced }) {
 
 const kcalHint = (k) => (k <= 600 ? 'A light meal, nicely balanced.' : k <= 1200 ? 'A filling meal — great to share or for one hungry person.' : 'A big feast! Perfect for sharing with family.');
 
-function PayOpt({ id, cur, set, art, title, sub, tag, off }) {
-  const [pkg, setPkg] = useState(chosenApp());
+function PayOpt({ id, cur, set, art, title, off }) {
   const on = cur === id && !off;
   const toast = useToast();
   const pick = () => (off ? toast(t('This restaurant has not added its UPI yet. Please choose cash.'), 'err') : set(id));
   return (
-    <div className={'pay-opt2' + (on ? ' on' : '') + (off ? ' off' : '')} onClick={pick} role="radio" aria-checked={on} aria-disabled={off} tabIndex={0}>
-      <div className="row gap">
-        <span className={'pay-art ' + art}>{art === 'cash' ? <CashArt /> : <span className="upi-badge big">UPI</span>}</span>
-        <span className="grow"><b>{title}{tag && <em className="pay-tag">{tag}</em>}</b><small>{sub}</small></span>
-        <i className="radio" />
-      </div>
-      {art === 'upi' && <UpiAppStrip value={on ? pkg : ''} onChange={(p) => { if (off) { pick(); return; } setPkg(p); set(id); }} compact={!on} />}
+    <div className={'pay-opt3' + (on ? ' on' : '') + (off ? ' off' : '')} onClick={pick} role="radio" aria-checked={on} aria-disabled={off} tabIndex={0}>
+      <span className={'pay-ic ' + art}>{art === 'cash' ? <CashArt /> : art === 'now' ? <UpiNowArt /> : <UpiLaterArt />}</span>
+      <b className="grow">{title}</b>
+      <i className="radio" />
     </div>
   );
 }
+/* phone with UPI arrow + lightning: pay right now */
+const UpiNowArt = () => (
+  <svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true">
+    <rect x="12" y="3" width="24" height="42" rx="5" fill="#2f2a7a" /><rect x="15" y="8" width="18" height="30" rx="2" fill="#fff" />
+    <path d="M20 14 L26 23 L20 32" fill="none" stroke="#f47920" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+    <path d="M24 14 L30 23 L24 32" fill="none" stroke="#1e9e55" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+    <path d="M38 4 L32 15 H37 L33 25 L44 11 H38.5 L42 4 Z" fill="#ffc21a" stroke="#2b1d12" strokeWidth="1.5" strokeLinejoin="round" />
+  </svg>
+);
+/* scooter + UPI tick: pay when the food arrives */
+const UpiLaterArt = () => (
+  <svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true">
+    <rect x="3" y="14" width="13" height="11" rx="2" fill="#e8461a" />
+    <path d="M5 34 Q5 30 9 30 L22 30 L25 34 H35 L39 20 H42 L38 36 Q37 38 34 38 H10 Q5 38 5 34 Z" fill="#ffd34d" stroke="#2b1d12" strokeWidth="1.8" strokeLinejoin="round" />
+    <circle cx="12" cy="39" r="5" fill="#2b1d12" /><circle cx="35" cy="39" r="5" fill="#2b1d12" />
+    <circle cx="36" cy="10" r="9" fill="#1e9e55" /><path d="M31.5 10 L35 13.5 L41 7" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 const CashArt = () => (
-  <svg width="38" height="38" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="12" width="38" height="22" rx="4" fill="#2e9b57" /><rect x="7" y="16" width="38" height="22" rx="4" fill="#3fb86c" stroke="#fff" strokeWidth="1.5" /><circle cx="26" cy="27" r="6" fill="#e9f8ee" /><text x="26" y="31" textAnchor="middle" fontSize="9" fontWeight="800" fill="#2e9b57">₹</text></svg>
+  <svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="12" width="38" height="22" rx="4" fill="#2e9b57" /><rect x="7" y="16" width="38" height="22" rx="4" fill="#3fb86c" stroke="#fff" strokeWidth="1.5" /><circle cx="26" cy="27" r="6" fill="#e9f8ee" /><text x="26" y="31" textAnchor="middle" fontSize="9" fontWeight="800" fill="#2e9b57">₹</text></svg>
 );

@@ -55,7 +55,7 @@ export default function RestOffers({ rest }) {
   const [del, setDel] = useState(null);
   return (
     <div className="rest-offers">
-      <button className="ai-cta offer" onClick={() => setOpen(true)}><span className="ai-spark">🎁</span><span className="grow"><b>{t('Make an offer with AI')}</b><small>{t('AI writes the offer, suggests a coupon code and makes a banner for your shop')}</small></span><Icon name="right" size={18} /></button>
+      <button className="ai-cta offer" onClick={() => setOpen(true)}><em className="new-badge">NEW</em><span className="ai-spark">🎁</span><span className="grow"><b>{t('Make an offer with AI')}</b><small>{t('AI writes the offer, suggests a coupon code and makes a banner for your shop')}</small></span><Icon name="right" size={18} /></button>
       {offers.map((o) => (
         <div key={o.id} className="card ro-card">
           <OfferBanner o={o} img={o.img} restName={rest.name} />
