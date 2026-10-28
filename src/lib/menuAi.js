@@ -14,9 +14,9 @@ const SCHEMA = Schema.object({
         properties: {
           name: Schema.string(), price: Schema.number(), category: Schema.enumString({ enum: CATS }),
           photoKey: Schema.string(), search: Schema.string(), kcal: Schema.integer(), serving: Schema.string(),
-          desc: Schema.string(), hindiLine: Schema.string(), veg: Schema.boolean(),
+          desc: Schema.string(), hindiLine: Schema.string(), veg: Schema.boolean(), onMrp: Schema.boolean(),
         },
-        optionalProperties: ['photoKey', 'kcal', 'serving', 'desc', 'hindiLine', 'search'],
+        optionalProperties: ['photoKey', 'kcal', 'serving', 'desc', 'hindiLine', 'search', 'onMrp'],
       }),
     }),
   },
@@ -106,6 +106,7 @@ TASK: List EVERY dish exactly as printed with its correct price.
 RULES:
 - Read carefully row by row and column by column. The price belongs to the dish on the SAME row / nearest on the right. Never shift prices between rows.
 - Read the full number (e.g. 120 not 12, 1,250 = 1250). Ignore "Rs", "₹", "/-".
+- If the price is written as "On MRP", "MRP", "As per MRP" or "एमआरपी" (packaged items like water bottle, cold drink, chips, ice-cream cups) set onMrp: true and price: 0 — unless an exact number is printed, then put that number and onMrp: true.
 - If a dish has several prices (Half/Full, Small/Medium/Large, 250g/500g/1kg, Plate/Piece) make ONE entry per price and add the size in brackets, e.g. "Paneer Butter Masala (Half)".
 - If a section heading gives the size/price (e.g. "All Shakes ₹80"), apply it to each dish under it.
 - Do NOT invent dishes. Skip headings, phone numbers, address, GST/tax notes, "extra" lines without a dish.
@@ -137,6 +138,7 @@ ${keys}
         desc: String(d.desc || '').slice(0, 80),
         story: String(d.hindiLine || '').slice(0, 140),
         veg: d.veg !== false,
+        onMrp: d.onMrp === true,
       }));
       if (!dishes.length) throw new Error('AI found no dishes');
       return { dishes, engine: name };

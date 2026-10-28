@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, VegMark, Stepper, Img, useToast } from '../ui.jsx';
 import { useCart, cartStore } from '../lib/data.js';
-import { rupee } from '../lib/utils.js';
+import { priceText, lineText, rupee } from '../lib/utils.js';
 import { FloatingVeggies, KcalRing, flyToCart } from './Motion.jsx';
 import { t } from '../i18n/index.js';
 import { FavBtn } from '../customer/RestaurantPage.jsx';
@@ -87,7 +87,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
         <div className="dv-body">
           <div className="dv-row">
             <div>
-              <div className="dv-price"><b key={it.price}>{rupee(it.price)}</b><span className="muted">· {it.qty}</span></div>
+              <div className="dv-price"><b key={it.price}>{priceText(it)}</b><span className="muted">· {it.qty}</span></div>
               <p className="muted small">{it.desc}</p>
             </div>
             {showKcal && it.kcal > 0 && <KcalRing kcal={it.kcal} />}
@@ -114,7 +114,7 @@ export default function DishView({ it, rest, showKcal = true, onClose }) {
             : (
               <div className="dv-cta">
                 {qty ? <Stepper qty={qty} onAdd={add} onSub={() => cartStore.sub(it.id)} /> : null}
-                <button className="btn primary lg grow" onClick={add}>{qty ? `Add one more · ${rupee(it.price)}` : `Add to cart · ${rupee(it.price)}`}</button>
+                <button className="btn primary lg grow" onClick={add}>{qty ? `Add one more · ${priceText(it)}` : `Add to cart · ${priceText(it)}`}</button>
               </div>
             )}
         </div>

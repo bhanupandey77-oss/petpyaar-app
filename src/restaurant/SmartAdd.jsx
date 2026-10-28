@@ -82,10 +82,12 @@ function match(lib, name) {
 
 /** "Paneer Butter Masala ..... 180" → { name, price } */
 export function parseLines(text) {
-  return String(text || '').split(/\n|;/).map((l) => l.replace(/[|_*•·]+/g, ' ').trim()).filter(Boolean).map((l) => {
+  return String(text || '').split(/\n|;/).map((l) => l.replace(/[|_*•·]+/g, ' ').trim()).filter(Boolean).map((l0) => {
+    const MRP = /[\s:\-–—=(]*(as\s*per\s*|on\s*)?(mrp|m\.r\.p\.?|एमआरपी)\)?/i;
+    const onMrp = MRP.test(l0); const l = l0.replace(MRP, ' ').trim();
     const m = l.match(/^(.*?)[\s:\-–—=.]*(?:rs\.?|₹|र\.?|रु\.?)?\s*(\d{1,4})(?:\s*\/-?)?\s*$/i);
     const name = (m ? m[1] : l).replace(/[\-–—:.=₹]+$/g, '').trim();
-    return { name, price: m ? Number(m[2]) : 0 };
+    return { name, price: m ? Number(m[2]) : 0, onMrp };
   }).filter((x) => /[a-zA-Z\u0900-\u097f]{2,}/.test(x.name) && x.name.length <= 40);
 }
 
@@ -104,7 +106,7 @@ export default function SmartAdd({ open, onClose, restId }) {
   const [files, setFiles] = useState([]);
   const [fail, setFail] = useState(null); // { reason, raw }
   const [engine, setEngine] = useState('');
-  const [picking, setPicking] = useState(null); // row id for own photo
+  const [picking, setPicking] = useState(null); // { id, k } k = photo index, null = add new
 
   const reset = () => { setRows(null); setRun(null); setDone(false); setOcr(null); setText(''); setFiles([]); setFail(null); setEngine(''); };
   const close = () => { reset(); onClose(); };
@@ -120,16 +122,18 @@ export default function SmartAdd({ open, onClose, restId }) {
       if (m && usedKey[m.key] && usedKey[m.key] !== b) m = null; // a different dish already took this photo
       if (m) usedKey[m.key] = b;
       const cat = x.cat || m?.cat || guessCat(x.name);
-      return { id: i, on: x.veg !== false, name: x.name, price: x.price || '', m, cat, kcal: x.kcal, qty: x.qty, desc: x.desc, story: x.story, nonVeg: x.veg === false, search: x.search || '', ph: null, phState: m ? 'lib' : 'wait', own: '' };
+      const libPh = m ? [...new Set([m.img, ...(m.gallery || [])].filter(Boolean))].map((url) => ({ url })) : [];
+      return { id: i, on: x.veg !== false, name: x.name, price: x.price || '', onMrp: !!x.onMrp, m, cat, kcal: x.kcal || m?.kcal || '', qty: x.qty, desc: x.desc, story: x.story, nonVeg: x.veg === false, search: x.search || '', photos: libPh.slice(0, 5), phState: libPh.length >= 3 ? 'done' : 'wait' };
     });
     setRows(out); setEngine(eng);
-    // real photo from the web for every dish not in our library (same dish name → same photo)
-    const need = []; const seenBase = {};
-    out.filter((r) => !r.m).forEach((r) => { const b = baseOf(r.name); if (seenBase[b] == null) { seenBase[b] = r.id; need.push(r); } });
-    findPhotos(need.map((r) => ({ id: r.id, name: r.name, search: r.search })), (id, ph) => {
+    // real photos from the web so every dish has at least 3 (same dish name → same photos)
+    const need = []; const seen = {};
+    out.filter((r) => r.photos.length < 3).forEach((r) => { const b = baseOf(r.name); if (seen[b] == null) { seen[b] = 1; need.push(r); } });
+    const skip = out.flatMap((r) => r.photos.map((p) => p.url));
+    findPhotos(need.map((r) => ({ id: r.id, name: r.name, search: r.search, have: r.photos.length, skip })), (id, got) => {
       const b = baseOf(out.find((r) => r.id === id)?.name);
-      setRows((rs) => rs && rs.map((x) => (!x.m && baseOf(x.name) === b ? { ...x, ph, phState: ph ? 'web' : 'none' } : x)));
-    });
+      setRows((rs) => rs && rs.map((x) => (baseOf(x.name) === b && x.phState === 'wait' ? { ...x, photos: [...x.photos, ...got].slice(0, 5), phState: 'done' } : x)));
+    }, 3);
   };
 
   const ocrImage = async (src) => {
@@ -175,7 +179,7 @@ export default function SmartAdd({ open, onClose, restId }) {
   };
 
   const go = async () => {
-    const list = rows.filter((r) => r.on && r.name.trim() && Number(r.price) > 0);
+    const list = rows.filter((r) => r.on && r.name.trim() && (Number(r.price) > 0 || r.onMrp));
     if (!list.length) { toast(t('Name and price are required'), 'err'); return; }
     setRun(Object.fromEntries(list.map((r) => [r.id, 0])));
     const ops = [];
@@ -183,25 +187,29 @@ export default function SmartAdd({ open, onClose, restId }) {
       for (let s = 1; s <= STEPS.length; s++) { await new Promise((ok) => setTimeout(ok, 120)); setRun((x) => ({ ...x, [r.id]: s })); }
       const m = r.m; const g = GENERIC[r.cat] || GENERIC.northindian;
       const key = m?.key; const catImg = CATEGORIES.find((c) => c.id === r.cat)?.img || '';
-      const img = r.own || r.ph?.url || m?.img || catImg;
-      const gallery = r.own ? [r.own] : r.ph ? [r.ph.url] : m?.gallery || [img].filter(Boolean);
+      const gallery = r.photos.map((p) => p.url).filter(Boolean);
+      const img = gallery[0] || catImg;
       ops.push(['set', 'items', `${restId}--${(key || 'd')}-${Date.now().toString(36)}${r.id}`, {
         restaurantId: restId, name: r.name.trim(), price: Number(r.price), cat: r.cat, veg: true, available: true, bestseller: false, sort: 60 + r.id,
-        kcal: r.kcal || m?.kcal || g.kcal, qty: r.qty || m?.qty || g.qty, desc: r.desc || m?.desc || '', story: r.story || (key && STORY[key]) || m?.story || g.story,
-        img: img || '', gallery, aiAdded: true,
-        ...(r.ph && !r.own ? { imgCredit: { page: r.ph.page || '', license: r.ph.license || '', author: r.ph.author || '' } } : {}),
+        kcal: Number(r.kcal) || m?.kcal || g.kcal, qty: r.qty || m?.qty || g.qty, desc: r.desc || m?.desc || '', story: r.story || (key && STORY[key]) || m?.story || g.story,
+        img: img || '', gallery: gallery.length ? gallery : [img].filter(Boolean), aiAdded: true, onMrp: !!r.onMrp,
+        credits: r.photos.filter((p) => p.page).map((p) => ({ url: p.url, page: p.page, license: p.license || '', author: p.author || '' })),
       }]);
     }
     try { await bulk(ops); setDone(true); toast(t('{} dishes added to your menu').replace('{}', ops.length)); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
   };
 
-  const thumbOf = (r) => r.own || r.ph?.url || r.m?.img || '';
-  const phText = (r) => (r.own ? t('Your photo') : r.phState === 'lib' ? `✓ ${t('Photo')}: ${r.m.name}` : r.phState === 'web' ? `✓ ${t('Real photo found')}` : r.phState === 'wait' ? t('Finding photo…') : t('No photo found — tap the photo to add yours'));
+  const thumbOf = (r) => r.photos?.[0]?.url || '';
+  const phText = (r) => (r.phState === 'wait' ? t('Finding photos…') : r.photos.length >= 3 ? `✓ ${r.photos.length} ${t('photos')}` : r.photos.length ? `${r.photos.length} ${t('photos')} — ${t('tap + to add more')}` : t('No photo found — tap + to add yours'));
   const ownPick = async (e) => {
-    const f = e.target.files?.[0]; e.target.value = ''; if (!f || picking == null) return;
-    try { upd(picking, { own: await compressImage(f, 720, 180000) }); } catch { toast(t('Could not read the photo'), 'err'); }
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f || !picking) return;
+    try {
+      const url = await compressImage(f, 720, 180000);
+      setRows((rs) => rs.map((x) => { if (x.id !== picking.id) return x; const ph = [...x.photos]; if (picking.k != null && picking.k < ph.length) ph[picking.k] = { url }; else ph.push({ url }); return { ...x, photos: ph.slice(0, 5) }; }));
+    } catch { toast(t('Could not read the photo'), 'err'); }
     setPicking(null);
   };
+  const delPhoto = (id, k) => setRows((rs) => rs.map((x) => (x.id === id ? { ...x, photos: x.photos.filter((_, j) => j !== k) } : x)));
 
   return (
     <Sheet open={open} onClose={close} title="Add dishes with AI" full>
@@ -251,23 +259,39 @@ export default function SmartAdd({ open, onClose, restId }) {
           <p className={'small ai-engine' + (engine === 'offline' ? ' warn' : '')}>{engine === 'offline' ? `⚠️ ${t('Read offline — please check every name and price carefully.')}` : engine === 'typed' ? '' : `✨ ${t('Read by AI')}`}</p>
           <p className="small">{`${rows.length} ${t('dishes found — check names & prices, untick what you don\'t want. Tap a photo to change it.')}`}</p>
           {rows.map((r) => (
-            <div key={r.id} className={'ai-row' + (r.on ? '' : ' off')}>
-              <input type="checkbox" disabled={r.nonVeg} checked={r.on} onChange={(e) => upd(r.id, { on: e.target.checked })} />
-              <button className="ai-thumb-btn" onClick={() => setPicking(r.id)} aria-label="Change photo">{r.phState === 'wait' && !r.own ? <span className="ai-thumb ai-spin-box"><span className="ai-spin" /></span> : <Img src={thumbOf(r)} alt="" className="ai-thumb" />}<i><Icon name="camera" size={11} /></i></button>
-              <div className="grow">
-                <input className="input slim" value={r.name} onChange={(e) => upd(r.id, { name: e.target.value })} data-notr="" />
-                <small className={r.nonVeg ? 't-red' : r.phState === 'none' && !r.own ? 'muted' : 't-green'}>{r.nonVeg ? t('Non-veg — not allowed on FoodGaon') : phText(r)}</small>
-                {r.story && <small className="mi-story" data-notr="" lang="hi">{r.story}</small>}
+            <div key={r.id} className={'ai-row2' + (r.on ? '' : ' off')}>
+              <div className="ai-row">
+                <input type="checkbox" disabled={r.nonVeg} checked={r.on} onChange={(e) => upd(r.id, { on: e.target.checked })} />
+                <div className="grow">
+                  <input className="input slim" value={r.name} onChange={(e) => upd(r.id, { name: e.target.value })} data-notr="" />
+                  <small className={r.nonVeg ? 't-red' : r.photos.length >= 3 ? 't-green' : 'muted'}>{r.nonVeg ? t('Non-veg — not allowed on FoodGaon') : phText(r)}</small>
+                </div>
               </div>
-              <input className={'input slim price' + (Number(r.price) > 0 ? '' : ' need')} inputMode="numeric" value={r.price} placeholder="₹" onChange={(e) => upd(r.id, { price: e.target.value.replace(/\D/g, '') })} />
+              <div className="ai-fields">
+                <label className={'ai-f' + (Number(r.price) > 0 || r.onMrp ? '' : ' need')}><span>₹</span><input inputMode="numeric" value={r.price} placeholder={r.onMrp ? 'MRP' : t('Price')} onChange={(e) => upd(r.id, { price: e.target.value.replace(/\D/g, '') })} /></label>
+                <label className={'ai-mrp' + (r.onMrp ? ' on' : '')}><input type="checkbox" checked={!!r.onMrp} onChange={(e) => upd(r.id, { onMrp: e.target.checked })} /> On MRP</label>
+                <label className="ai-f kc"><input inputMode="numeric" value={r.kcal || ''} placeholder="—" onChange={(e) => upd(r.id, { kcal: e.target.value.replace(/\D/g, '').slice(0, 4) })} /><span>kcal</span></label>
+              </div>
+              <div className="ai-photos">
+                {r.phState === 'wait' && r.photos.length === 0 && <span className="ai-ph ai-spin-box"><span className="ai-spin" /></span>}
+                {r.photos.map((p, k) => (
+                  <span key={k} className="ai-ph">
+                    <button className="ai-ph-img" onClick={() => setPicking({ id: r.id, k })} aria-label="Change photo"><Img src={p.url} alt="" /></button>
+                    <button className="ai-ph-x" onClick={() => delPhoto(r.id, k)} aria-label="Remove photo">×</button>
+                    {k === 0 && <em>Main</em>}
+                  </span>
+                ))}
+                {r.photos.length < 5 && <button className="ai-ph add" onClick={() => setPicking({ id: r.id, k: null })} aria-label="Add photo"><Icon name="plus" size={18} /></button>}
+              </div>
+              {r.story && <small className="mi-story" data-notr="" lang="hi">{r.story}</small>}
             </div>
           ))}
           <button className="btn primary block lg" onClick={go}><Icon name="plus" size={18} /> {`Add ${rows.filter((r) => r.on).length} dishes`}</button>
           <button className="btn ghost block" onClick={reset}>Start again</button>
         </>
       )}
-      {picking != null && (
-        <Sheet open onClose={() => setPicking(null)} title="Dish photo">
+      {picking && (
+        <Sheet open onClose={() => setPicking(null)} title={picking.k != null ? t('Change photo') : t('Add photo')}>
           <div className="row gap">
             <label className="btn primary grow"><Icon name="camera" size={18} /> Camera<input type="file" accept="image/*" capture="environment" hidden onChange={ownPick} /></label>
             <label className="btn ghost grow"><Icon name="image" size={18} /> Gallery<input type="file" accept="image/*" hidden onChange={ownPick} /></label>
@@ -280,7 +304,7 @@ export default function SmartAdd({ open, onClose, restId }) {
             const st = run[r.id]; const ok = st >= STEPS.length;
             return (
               <div key={r.id} className={'ai-prog' + (ok ? ' ok' : '')}>
-                <div className="row gap"><Img src={thumbOf(r) || CATEGORIES.find((c) => c.id === r.cat)?.img} alt="" className="ai-thumb" /><div className="grow"><b data-notr="">{r.name}</b><small className="muted">{rupee(Number(r.price))}</small></div>{ok ? <span className="ai-tick">✓</span> : <span className="ai-spin" />}</div>
+                <div className="row gap"><Img src={thumbOf(r) || CATEGORIES.find((c) => c.id === r.cat)?.img} alt="" className="ai-thumb" /><div className="grow"><b data-notr="">{r.name}</b><small className="muted">{r.onMrp && !(Number(r.price) > 0) ? 'On MRP' : `${rupee(Number(r.price))}${r.onMrp ? ' · On MRP' : ''}`}{r.kcal ? ` · ~${r.kcal} kcal` : ''}</small></div>{ok ? <span className="ai-tick">✓</span> : <span className="ai-spin" />}</div>
                 <div className="ai-steps" data-notr="" lang="hi">{STEPS.map((s, k) => <span key={s} className={k < st ? 'done' : k === st ? 'cur' : ''}>{k < st ? '✓ ' : ''}{s}</span>)}</div>
               </div>
             );

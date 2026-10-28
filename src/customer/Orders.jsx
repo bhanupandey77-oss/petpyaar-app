@@ -3,7 +3,7 @@ import { Icon, Empty, StatusChip, STATUS, Confirm, useToast, VegMark, Sheet, Fie
 import { useApp } from '../App.jsx';
 import { useDoc, setStatus, ACTIVE, cartStore } from '../lib/data.js';
 import { patch } from '../lib/fb.js';
-import { rupee, fmtDateTime, fmtTime, tel, plain, km, ms, systemNotify } from '../lib/utils.js';
+import { priceText, lineText, rupee, fmtDateTime, fmtTime, tel, plain, km, ms, systemNotify } from '../lib/utils.js';
 import MapView from '../components/MapView.jsx';
 import { TopBar } from './RestaurantPage.jsx';
 import { t, tr } from '../i18n/index.js';
@@ -226,7 +226,7 @@ export function TrackOrder({ id, fresh, nav }) {
         <div className="card">
           <h4>Order details</h4>
           {o.items.map((x) => (
-            <div key={x.id} className="bill"><span><VegMark size={11} /> {x.name} × {x.qty}</span><span>{rupee(x.price * x.qty)}</span></div>
+            <div key={x.id} className="bill"><span><VegMark size={11} /> {x.name} × {x.qty}</span><span>{lineText(x)}</span></div>
           ))}
           {o.discount > 0 && <div className="bill t-green"><span>{`Coupon ${o.offerCode}`}</span><span>− {rupee(o.discount)}</span></div>}
           {o.gst > 0 && <div className="bill muted small"><span>{o.gstIncluded ? `Includes GST ${o.gstPct || 5}%` : `GST ${o.gstPct || 5}%`}</span><span>{rupee(o.gst)}</span></div>}

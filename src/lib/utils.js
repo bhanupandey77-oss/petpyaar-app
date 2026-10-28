@@ -2,6 +2,10 @@ import { isNative, nativeNotify, nativeAskNotify } from './native.js';
 import { getLang } from '../i18n/index.js';
 
 export const rupee = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+/** price label: 'On MRP' when the dish is sold at printed MRP and no price is set */
+export const mrpFree = (it) => !!it?.onMrp && !(Number(it.price) > 0);
+export const priceText = (it) => (mrpFree(it) ? 'On MRP' : rupee(it?.price) + (it?.onMrp ? ' (MRP)' : ''));
+export const lineText = (x) => (mrpFree(x) ? 'On MRP' : rupee(Number(x.price) * Number(x.qty || 1)));
 const EN_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const HI_SHORT = ['जन', 'फ़र', 'मार्च', 'अप्रै', 'मई', 'जून', 'जुला', 'अग', 'सित', 'अक्टू', 'नव', 'दिस'];
 const toMs = (t) => (t?.toMillis ? t.toMillis() : typeof t === 'number' ? t : t ? Date.parse(t) : 0);

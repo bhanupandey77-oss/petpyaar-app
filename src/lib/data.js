@@ -47,7 +47,7 @@ export const cartStore = {
   add(item) {
     if (cart.restaurantId && cart.restaurantId !== item.restaurantId) return false;
     const cur = cart.items[item.id]?.qty || 0;
-    cart = { restaurantId: item.restaurantId, items: { ...cart.items, [item.id]: { id: item.id, name: item.name, price: item.price, kcal: item.kcal || 0, qty: cur + 1 } } };
+    cart = { restaurantId: item.restaurantId, items: { ...cart.items, [item.id]: { id: item.id, name: item.name, price: item.price, kcal: item.kcal || 0, onMrp: !!item.onMrp, qty: cur + 1 } } };
     emit(); return true;
   },
   sub(id) {
@@ -121,7 +121,7 @@ export async function placeOrder({ user, customerName, rest, config, cartData, a
     address, restaurantId: rest.id, restaurantName: rest.name, restaurantPhone: rest.ownerPhone || '', restaurantAddr: rest.address || '',
     restFssai: rest.fssai || '', restGstin: rest.gstin || '',
     restLat: rest.lat || null, restLng: rest.lng || null, restUpiId: rest.upiId || '', restUpiName: rest.upiName || rest.name || '',
-    items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0 })),
+    items: list.map((x) => ({ id: x.id, name: x.name, price: x.price, qty: x.qty, kcal: x.kcal || 0, ...(x.onMrp ? { onMrp: true } : {}) })),
     itemTotal, discount: b.discount, offerCode: b.discount ? offer.code : '', discountBy, kcal,
     taxable: b.taxable, gstPct: b.gstPct, gst: b.gst, gstIncluded: true, deliveryFee: b.deliveryFee, total: b.total,
     commissionPct: b.commissionPct, commission: b.commission, commissionGst: b.commissionGst, fgCoupon: b.fgCoupon,

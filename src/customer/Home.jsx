@@ -3,7 +3,7 @@ import { Icon, Img, VegMark, Wordmark, Logo, Stepper, useToast } from '../ui.jsx
 import { useApp } from '../App.jsx';
 import { useRestaurants, useItems, useBanners, useCart, cartStore, useFavs } from '../lib/data.js';
 import { CATEGORIES } from '../data/menu.js';
-import { rupee, LS } from '../lib/utils.js';
+import { priceText, lineText, rupee, LS } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import { FloatingVeggies, Typewriter, Reveal } from '../components/Motion.jsx';
 import DishView from '../components/DishView.jsx';
@@ -171,7 +171,7 @@ function BestCard({ it, rest, onView, showKcal }) {
       <button className="bc-img" onClick={onView}><Img src={it.img} alt="" /><span className="bc-shade" /><b>{it.name}</b></button>
       <div className="bc-body">
         <small className="muted" data-notr="">{rest?.name}</small>
-        <div className="bc-row"><b>{rupee(it.price)}</b>{showKcal && it.kcal > 0 && <span className="kcal">{`~${it.kcal} kcal`}</span>}</div>
+        <div className="bc-row"><b>{priceText(it)}</b>{showKcal && it.kcal > 0 && <span className="kcal">{`~${it.kcal} kcal`}</span>}</div>
         <Stepper small qty={qty} onAdd={add} onSub={() => cartStore.sub(it.id)} />
       </div>
     </div>

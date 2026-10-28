@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Icon, Sheet, useToast, Logo, Wordmark } from '../ui.jsx';
-import { rupee, fmtDateTime, plain } from '../lib/utils.js';
+import { priceText, lineText, rupee, fmtDateTime, plain } from '../lib/utils.js';
 import { elementToPdf } from '../lib/pdf.js';
 import { cycleRange } from '../lib/data.js';
 import { t } from '../i18n/index.js';
@@ -49,7 +49,7 @@ export function Invoice({ o, config }) {
       </div>
       <table className="doc-table">
         <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
-        <tbody>{o.items.map((x) => <tr key={x.id}><td>{x.name}</td><td>{x.qty}</td><td>{rupee(x.price)}</td><td>{rupee(x.price * x.qty)}</td></tr>)}</tbody>
+        <tbody>{o.items.map((x) => <tr key={x.id}><td>{x.name}</td><td>{x.qty}</td><td>{priceText(x)}</td><td>{lineText(x)}</td></tr>)}</tbody>
       </table>
       <div className="doc-sum">
         <div><span>{o.gstIncluded ? 'Item total (incl. GST)' : 'Item total'}</span><span>{rupee(o.itemTotal)}</span></div>

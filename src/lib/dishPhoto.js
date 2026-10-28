@@ -1,42 +1,50 @@
-// Find a real, freely-licensed photo for a dish on Wikimedia Commons (CORS-enabled public API).
+// Find real, freely-licensed photos for a dish on Wikimedia Commons (CORS-enabled public API).
 const API = 'https://commons.wikimedia.org/w/api.php';
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
-const BAD = /logo|map|menu|svg|icon|drawing|diagram|flag|signature|poster|chicken|mutton|fish|egg|meat/i;
+const BAD = /logo|map|menu|svg|icon|drawing|diagram|flag|signature|poster|chicken|mutton|fish|egg|meat|restaurant|shop|stall|market|people|person|portrait|festival/i;
 
-async function search(q, used) {
-  const u = `${API}?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=12&gsrsearch=${encodeURIComponent(`${q} filetype:bitmap`)}&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=640`;
+async function search(q, used, want) {
+  const u = `${API}?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15&gsrsearch=${encodeURIComponent(`${q} filetype:bitmap`)}&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=640`;
   let r = null;
   for (let k = 0; k < 4; k++) {
     try { r = await fetch(u, { headers: { 'Api-User-Agent': 'FoodGaon/1.0 (contact@techgaon.in)' } }); if (r.ok) break; } catch { r = null; }
     await wait(1500 * (k + 1)); // Wikimedia rate limit → back off and retry
   }
-  if (!r || !r.ok) return null;
+  if (!r || !r.ok) return [];
   const pages = Object.values((await r.json())?.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  const out = [];
   for (const p of pages) {
+    if (out.length >= want) break;
     const ii = p.imageinfo?.[0]; if (!ii || !/jpe?g|png|webp/.test(ii.mime || '')) continue;
-    if (BAD.test(p.title) || used.has(ii.thumburl)) continue;
+    const url = ii.thumburl || ii.url;
+    if (BAD.test(p.title) || used.has(url)) continue;
     const md = ii.extmetadata || {};
-    return { url: ii.thumburl || ii.url, page: ii.descriptionurl, license: md.LicenseShortName?.value || '', author: String(md.Artist?.value || '').replace(/<[^>]+>/g, '').slice(0, 60) };
+    used.add(url);
+    out.push({ url, page: ii.descriptionurl, license: md.LicenseShortName?.value || '', author: String(md.Artist?.value || '').replace(/<[^>]+>/g, '').slice(0, 60) });
   }
-  return null;
+  return out;
 }
 
-/** dishes: [{ id, search, name }] → { [id]: photo } ; runs 2 at a time, gently (Wikimedia rate limits), never reuses the same photo */
-export async function findPhotos(dishes, onEach) {
-  const used = new Set(); const out = {};
-  let i = 0;
+/** dishes: [{ id, search, name, have }] → calls onEach(id, photos[]) with up to `want - have` NEW photos.
+ *  Runs 2 at a time, gently (Wikimedia rate limits); a photo is never given to two different dishes. */
+export async function findPhotos(dishes, onEach, want = 3) {
+  const used = new Set(); let i = 0;
+  dishes.forEach((d) => (d.skip || []).forEach((u) => used.add(u)));
   const worker = async () => {
     while (i < dishes.length) {
       const d = dishes[i++];
+      const need = Math.max(0, want - (d.have || 0));
       const base = String(d.name || '').replace(/\(.*?\)/g, '').trim();
-      const tries = [...new Set([d.search, base, `${base} food`].filter(Boolean))];
-      let ph = null;
-      for (const q of tries) { try { ph = await search(q, used); } catch { ph = null; } if (ph) break; await wait(500); }
-      if (ph) { used.add(ph.url); out[d.id] = ph; }
-      onEach?.(d.id, ph);
-      await wait(600);
+      const tries = [...new Set([d.search, base, `${base} food`, `${base} Indian`].filter(Boolean))];
+      const got = [];
+      for (const q of tries) {
+        if (got.length >= need) break;
+        try { got.push(...(await search(q, used, need - got.length))); } catch { /* next */ }
+        await wait(500);
+      }
+      onEach?.(d.id, got);
+      await wait(500);
     }
   };
   await Promise.all([worker(), worker()]);
-  return out;
 }

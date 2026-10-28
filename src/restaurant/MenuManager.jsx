@@ -3,7 +3,7 @@ import { Icon, Toggle, Sheet, Field, useToast, Img, VegMark, Confirm } from '../
 import { useItems } from '../lib/data.js';
 import { put, patch, remove, bulk } from '../lib/fb.js';
 import { CATEGORIES } from '../data/menu.js';
-import { rupee, compressImage } from '../lib/utils.js';
+import { priceText, lineText, rupee, compressImage } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import SmartAdd from './SmartAdd.jsx';
 import PhotoPick from '../components/PhotoPick.jsx';
@@ -58,7 +58,7 @@ export default function MenuManager({ restId }) {
           <Img src={it.img} alt="" className="mm-img" />
           <div className="grow" onClick={() => (sel ? toggleSel(it.id) : setEdit(it))}>
             <b>{it.name}</b>
-            <small className="muted">{rupee(it.price)} · {it.qty}{it.kcal ? ` · ~${it.kcal} kcal` : ''}{it.aiAdded ? ' · ✨ AI' : ''}</small>
+            <small className="muted">{priceText(it)} · {it.qty}{it.kcal ? ` · ~${it.kcal} kcal` : ''}{it.aiAdded ? ' · ✨ AI' : ''}</small>
           </div>
           <Toggle on={it.available !== false} onChange={(v) => avail(it, v)} label="In stock" />
         </div>
@@ -83,9 +83,9 @@ function ItemEditor({ open, item, restId, onClose }) {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const pick = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { setF({ ...f, img: await compressImage(file) }); } catch (er) { toast(t(er.message), 'err'); } };
   const save = async () => {
-    if (!f.name.trim() || !(Number(f.price) > 0)) { toast(t('Name and price are required'), 'err'); return; }
+    if (!f.name.trim() || !(Number(f.price) > 0 || f.onMrp)) { toast(t('Name and price are required'), 'err'); return; }
     setBusy(true);
-    const data = { restaurantId: restId, name: f.name.trim(), price: Number(f.price), kcal: Number(f.kcal) || 0, qty: f.qty.trim(), desc: f.desc.trim(), story: (f.story || '').trim(), cat: f.cat, img: f.img || '', gallery: (f.gallery && f.gallery.length ? f.gallery : [f.img]).filter(Boolean), bestseller: !!f.bestseller, veg: true, available: f.available !== false, sort: f.sort || 50 };
+    const data = { restaurantId: restId, name: f.name.trim(), price: Number(f.price) || 0, onMrp: !!f.onMrp, kcal: Number(f.kcal) || 0, qty: f.qty.trim(), desc: f.desc.trim(), story: (f.story || '').trim(), cat: f.cat, img: f.img || '', gallery: (f.gallery && f.gallery.length ? f.gallery : [f.img]).filter(Boolean), bestseller: !!f.bestseller, veg: true, available: f.available !== false, sort: f.sort || 50 };
     try { await put('items', item?.id || `${restId}--${Date.now().toString(36)}`, data); toast(t('Saved')); onClose(); } catch (e) { console.warn(e); toast(t('Could not save'), 'err'); }
     setBusy(false);
   };
@@ -103,7 +103,7 @@ function ItemEditor({ open, item, restId, onClose }) {
       <p className="tiny muted"><VegMark size={11} /> FoodGaon is 100% vegetarian — only veg dishes are allowed.</p>
       <Field label="Dish name"><input className="input" value={f.name} onChange={set('name')} /></Field>
       <div className="row gap">
-        <Field label="Price (₹)"><input className="input" inputMode="decimal" value={f.price} onChange={set('price')} /></Field>
+        <Field label={f.onMrp ? 'MRP (₹, optional)' : 'Price (₹)'}><input className="input" inputMode="decimal" value={f.price} onChange={set('price')} placeholder={f.onMrp ? 'On MRP' : ''} /><label className={'ai-mrp' + (f.onMrp ? ' on' : '')} style={{ marginTop: 6 }}><input type="checkbox" checked={!!f.onMrp} onChange={(e) => setF({ ...f, onMrp: e.target.checked })} /> On MRP</label></Field>
         <Field label="Calories (approx.)" hint="kcal per serving"><input className="input" inputMode="numeric" value={f.kcal} onChange={set('kcal')} /></Field>
       </div>
       <div className="row gap">

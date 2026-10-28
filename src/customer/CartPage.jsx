@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { hasUpi, UpiAppStrip, chosenApp } from '../components/Pay.jsx';
 import { Sheet } from '../ui.jsx';
 import { useOffers, forRestaurant, discountFor, offerLabel, offerTerms } from '../lib/offers.js';
-import { LS } from '../lib/utils.js';
+import { LS, priceText, lineText } from '../lib/utils.js';
 import { Icon, VegMark, Stepper, Empty, useToast } from '../ui.jsx';
 import { useApp } from '../App.jsx';
 import { useCart, cartTotals, cartStore, useRestaurants, placeOrder, billFor } from '../lib/data.js';
@@ -93,9 +93,9 @@ export default function CartPage({ nav, onPlaced }) {
           {list.map((x) => (
             <div key={x.id} className="cart-row">
               <VegMark size={13} />
-              <div className="grow"><b>{x.name}</b><small className="muted">{rupee(x.price)}{config.showCalories && x.kcal ? ` · ~${x.kcal} kcal` : ''}</small></div>
+              <div className="grow"><b>{x.name}</b><small className="muted">{priceText(x)}{config.showCalories && x.kcal ? ` · ~${x.kcal} kcal` : ''}</small></div>
               <Stepper small qty={x.qty} onAdd={() => cartStore.add({ ...x, restaurantId: cart.restaurantId })} onSub={() => cartStore.sub(x.id)} />
-              <b className="cart-amt">{rupee(x.qty * x.price)}</b>
+              <b className="cart-amt">{lineText(x)}</b>
             </div>
           ))}
           <button className="link small" onClick={() => nav.openRest(cart.restaurantId)}><Icon name="plus" size={14} /> Add more items</button>
@@ -131,6 +131,7 @@ export default function CartPage({ nav, onPlaced }) {
           {discount > 0 && <div className="bill t-green"><span>{`Coupon (${applied.code})`}</span><span>− {rupee(discount)}</span></div>}
           <div className="bill"><span>Delivery fee</span><span>{fee ? rupee(fee) : <b className="t-green">FREE</b>}</span></div>
           <div className="bill total"><span>To pay</span><span>{rupee(bill.total)}</span></div>
+          {list.some((x) => x.onMrp && !(Number(x.price) > 0)) && <p className="tiny mrp-note">{t('“On MRP” items are not in this total — pay the printed MRP to the restaurant at delivery.')}</p>}
           <div className="gst-split">
             <span>{`Food value ${rupee(bill.taxable)}`}</span><span>+</span><span>{`GST ${bill.gstPct}% ${rupee(bill.gst)}`}</span><span>=</span><b>{rupee(bill.total - fee)}</b>
           </div>

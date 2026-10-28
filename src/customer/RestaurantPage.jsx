@@ -3,7 +3,7 @@ import { Icon, Img, VegMark, Stepper, useToast, Sheet } from '../ui.jsx';
 import { useApp } from '../App.jsx';
 import { useRestaurants, useItems, useCart, cartStore, useFavs, favStore } from '../lib/data.js';
 import { CATEGORIES } from '../data/menu.js';
-import { rupee } from '../lib/utils.js';
+import { priceText, lineText, rupee } from '../lib/utils.js';
 import { t } from '../i18n/index.js';
 import DishView from '../components/DishView.jsx';
 import { useReviews, ratingOf, ReviewList } from '../components/Reviews.jsx';
@@ -124,7 +124,7 @@ export function MenuItem({ it, rest, showKcal, onView }) {
       <div className="mi-info" onClick={onView}>
         <div className="mi-tags"><VegMark size={13} />{it.bestseller && <span className="best-tag"><Icon name="star" size={11} fill="currentColor" stroke={0} /> Bestseller</span>}</div>
         <b className="mi-name">{it.name}</b>
-        <div className="mi-price">{rupee(it.price)} <small className="muted">· {it.qty}</small></div>
+        <div className="mi-price">{priceText(it)} <small className="muted">· {it.qty}</small></div>
         {showKcal && it.kcal > 0 && <span className="kcal"><Icon name="fire" size={12} /> {`~${it.kcal} kcal`}</span>}
         {it.story ? <p className="mi-desc mi-story" data-notr="" lang="hi">{it.story}</p> : <p className="mi-desc">{it.desc}</p>}
       </div>
