@@ -215,13 +215,13 @@ export const DEFAULT_CONFIG = {
   upiEnabled: true,
   upiId: '',
   upiName: 'FoodGaon',
-  supportPhone: '9415213754',
+  supportPhone: '9129203268',
   serviceArea: 'Haidergarh, Barabanki',
   showCalories: true,
 };
 
 export const STAFF = [
-  { phone: '+919415213754', name: 'TechGaon Admin', admin: true, restaurant: '', rider: false, riderOf: '' },
+  { phone: '+919129203268', name: 'TechGaon Admin', admin: true, restaurant: '', rider: false, riderOf: '' },
   { phone: '+919415333145', name: 'Parag', admin: false, restaurant: 'parag', rider: false, riderOf: '' },
   { phone: '+919198427160', name: 'Raju', admin: false, restaurant: 'raju-lassi', rider: false, riderOf: '' },
   { phone: '+919695256588', name: 'Deepak', admin: false, restaurant: '', rider: true, riderOf: 'parag' },

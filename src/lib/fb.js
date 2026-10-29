@@ -96,7 +96,7 @@ export const MOCK_DOMAIN = 'login.foodgaon.app';
 const mockEmail = (p10) => `91${p10}@${MOCK_DOMAIN}`;
 const mockPass = (p10) => `FG-${p10}-tg2026`;
 /* the admin number uses its own secret PIN instead of the public test OTP (the PIN is part of its password) */
-export const ADMIN_P10 = '9415213754';
+export const ADMIN_P10 = '9129203268';
 const ADMIN_PIN_SHA = '1d44804dea45fe6ddce3ac8ce3bd0952cfb5bfa34d5091aa878c0ea17099a4bd';
 const sha = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
 const wrongOtp = () => Object.assign(new Error('wrong otp'), { code: 'auth/invalid-verification-code' });
@@ -105,11 +105,12 @@ async function adminLogin(code) {
   try { return await signInWithEmailAndPassword(auth, email, pass); } catch (e) {
     if (!/invalid-credential|invalid-login|wrong-password/.test(e.code || '')) throw e;
   }
-  // one-time move from the old test password to the PIN password
   if ((await sha(`foodgaon-admin:${code}`)) !== ADMIN_PIN_SHA) throw wrongOtp();
-  const r = await signInWithEmailAndPassword(auth, email, mockPass(ADMIN_P10)).catch(() => { throw wrongOtp(); });
-  await updatePassword(r.user, pass);
-  return r;
+  // one-time move from the old test password to the PIN password
+  const r = await signInWithEmailAndPassword(auth, email, mockPass(ADMIN_P10)).catch(() => null);
+  if (r) { await updatePassword(r.user, pass); return r; }
+  // first login of a new admin number: create its account with the PIN password
+  return await createUserWithEmailAndPassword(auth, email, pass).catch(() => { throw wrongOtp(); });
 }
 export async function mockLogin(phone10, code) {
   if (phone10 === ADMIN_P10) return adminLogin(String(code));
